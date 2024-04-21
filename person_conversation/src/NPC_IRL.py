@@ -1,4 +1,4 @@
-# By Aryan and Noor
+# By Aryan and Noor and Quan and Vincent
 import cv2
 import time
 import speech_recognition as sr
