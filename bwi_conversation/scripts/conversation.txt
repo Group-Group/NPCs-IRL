@@ -1,3 +1,0 @@
-
-Person: hey how are you
-Robot: "Greetings! I'm doing well, thank you. How have you been?"

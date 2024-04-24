@@ -6,11 +6,10 @@ import time
 import speech_recognition as sr
 import platform
 import os
-from gtts import gTTS
-import google.generativeai as genai
 import os
 import random
-import openai
+from openai import OpenAI
+from pathlib import Path
 
 last_destination = None
 incomplete_action = False
@@ -24,21 +23,14 @@ device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
 # Start device
 device = pykinect.start_device(config=device_config)
 
-
-GOOGLE_API_KEY ='AIzaSyA8VpElujIxJy1RWLO13KAdd5zDLxtAsI0'
-
-genai.configure(api_key=GOOGLE_API_KEY)
-
-model = genai.GenerativeModel('gemini-pro')
-
+AIc = OpenAI(
+    # This is the default and can be omitted
+    api_key="sk-proj-98CEKi821xDabqz4Lmi1T3BlbkFJWLZVBqJ15e7eqBxCwZCR",
+)
 
 with open("conversation.txt", "w") as file:
     file.write("")
     file.close()
-
-
-
-
 
 def recognize_speech():
     recognizer = sr.Recognizer()
@@ -59,11 +51,16 @@ def recognize_speech():
         return None
 
 def text_to_audio(text, language='en'):
-    # Create a gTTS object
-    tts = gTTS(text=text, lang=language)
 
-    # Save the audio to a file
-    tts.save("output.mp3")
+    speech_file_path = Path(__file__).parent / "output.mp3"
+    response = AIc.audio.speech.create(
+        model="tts-1",
+        voice="onyx",
+        input=text
+    )
+
+    response.stream_to_file(speech_file_path)
+
 
     if platform.system() == 'Windows':
         os.system("start output.mp3")
@@ -81,21 +78,41 @@ def converse():
             convo = file.read()
             file.close()
         if convo == "":
-            response = model.generate_content("You are a BWI robot, circiling the robotics lab and ran into a person and they started talking to you. They said \"" + recognized_text + "\". Respond to them with a casual greeting and reply to them if needed. Only write your response.")
+            generated_response = AIc.chat.completions.create(
+            messages=[
+                    {
+                        "role": "user",
+                        "content": "You are a BWI robot, circiling the robotics lab and ran into a person and they started talking to you. They said \"" + recognized_text + "\". Respond to them with a casual greeting and reply to them if needed. Only write your response.",
+                    }
+                ],
+                model="gpt-3.5-turbo",
+            )
+
+            response = generated_response.choices[0].message.content
         else:
-            response = model.generate_content("You are a BWI robot, currently in a casual conversation with a person. The conversation so far has been \"" + convo + "\". They just said \"" + recognized_text + "\". Respond to them with a casual conversational response. Only write your response.")
+            generated_response = AIc.chat.completions.create(
+            messages=[
+                    {
+                        "role": "user",
+                        "content": "You are a BWI robot, currently in a casual conversation with a person. The conversation so far has been \"" + convo + "\". They just said \"" + recognized_text + "\". Respond to them with a casual conversational response. Only write your response.",
+                    }
+                ],
+                model="gpt-3.5-turbo",
+            )
+
+            response = generated_response.choices[0].message.content
         
         with open("conversation.txt", "a") as file:
-            file.write("\nPerson: " + recognized_text + "\nRobot: " + response.text)
+            file.write("\nPerson: " + recognized_text + "\nRobot: " + response)
             file.close()
-        text_to_audio(response.text)
+        text_to_audio(response)
     check_for_person(time.time()) # TODO GET A WORD FOR IT TO SAY WHEN CONVERSATION IS OVER
     
 
 def check_for_person(start_time):
     cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
     body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
-    while start_time + 5 > time.time():
+    while start_time + 7 > time.time():
 
         capture = device.update()
 
@@ -109,11 +126,10 @@ def check_for_person(start_time):
         bodies = body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
         for (x, y, w, h) in bodies:
-            if w > 200 and h > 400:
-                cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                print("Saw a person. Going to continue the conversion!\n")
-                converse()
-        
+            cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            converse()
+            print("Saw a person. Going to continue the conversion!\n")
+
         cv2.imshow('Body detection', color_image)
 
         if cv2.waitKey(1) == ord('q'):
@@ -145,9 +161,7 @@ def go_to_pos(target):
     move_goal = roslibpy.actionlib.Goal(action_client, message)
     move_goal.send()
 
-    # Load the body cascade classifier
-    # body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
-
+    #TODO Body Detection more accurately
     cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
     body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
     while move_goal is not None and not move_goal.is_finished:
@@ -161,14 +175,12 @@ def go_to_pos(target):
         bodies = body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
         for (x, y, w, h) in bodies:
-            if w > 200 and h > 400:
-                cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                print("Person detected! Starting a conversation\n")
-                global incomplete_action
-                incomplete_action = True
-                cancel_goal()
-                converse()
-                
+            cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            global incomplete_action
+            incomplete_action = True
+            cancel_goal()
+            converse()
+            print("Person detected! Starting a conversation\n")
 
         cv2.imshow('Body detection', color_image)
 
@@ -184,12 +196,6 @@ def cancel_goal():
         print("move goal cancelled")
         move_goal.cancel()
         move_goal = None
-        
-
-# def destination_reached():
-#     print("I did it")
-
-# You need to write code to block until the goal completes
 
 
 positions = {
@@ -204,7 +210,6 @@ while True:
     if incomplete_action:
         incomplete_action = False
         go_to_pos(last_destination)
-        continue
     keys_list = [key for key in positions.keys() if key != last_destination] # make sure this works TODO
     random_position = random.choice(keys_list) # could make it so it excludes last destination key
     if random_position != last_destination:
