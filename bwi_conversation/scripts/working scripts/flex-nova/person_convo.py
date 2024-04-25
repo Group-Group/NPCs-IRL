@@ -199,8 +199,10 @@ def cancel_goal():
 
 
 positions = {
-    "tv_screen": [-0.424, 6.777, 0.217, 1.0],
-    "coffee_table": [-0.619, -0.202, 0.217, 1.0]
+    # "tv_screen": [-0.424, 6.777, 0.217, 1.0],
+    # "coffee_table": [-0.619, -0.202, 0.217, 1.0],
+    "red_line_hallway": [4.493, -2.265, 0.217, 1.0],
+    "down_the_hallway": [4.622, 8.359, 0.217, 1.0]
 }
 
 while True:
