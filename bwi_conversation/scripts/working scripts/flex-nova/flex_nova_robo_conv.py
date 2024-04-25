@@ -10,27 +10,27 @@ import os
 import random
 from openai import OpenAI
 from pathlib import Path
+import socket
+import json
+import threading
+import roslibpy.tf
 
 last_destination = None
 incomplete_action = False
 
-pykinect.initialize_libraries(module_k4abt_path='/usr/lib/libk4abt.so', track_body=False)
+# pykinect.initialize_libraries(module_k4abt_path='/usr/lib/libk4abt.so', track_body=False)
 
-# Modify camera configuration
-device_config = pykinect.default_configuration
-device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
+# # Modify camera configuration
+# device_config = pykinect.default_configuration
+# device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
 
-# Start device
-device = pykinect.start_device(config=device_config)
+# # Start device
+# device = pykinect.start_device(config=device_config)
 
 AIc = OpenAI(
     # This is the default and can be omitted
     api_key="sk-proj-98CEKi821xDabqz4Lmi1T3BlbkFJWLZVBqJ15e7eqBxCwZCR",
 )
-
-with open("conversation.txt", "w") as file:
-    file.write("")
-    file.close()
 
 def recognize_speech():
     recognizer = sr.Recognizer()
@@ -72,7 +72,7 @@ def text_to_audio(text, language='en'):
 
 def converse():
     recognized_text = recognize_speech()
-    if recognized_text:
+    while not recognized_text:
         print("You said:", recognized_text)
         with open("conversation.txt", "r") as file:
             convo = file.read()
@@ -106,42 +106,76 @@ def converse():
             file.write("\nPerson: " + recognized_text + "\nRobot: " + response)
             file.close()
         text_to_audio(response)
-    check_for_person(time.time()) # TODO GET A WORD FOR IT TO SAY WHEN CONVERSATION IS OVER
+    converse()
+    # check_for_person(time.time()) # TODO GET A WORD FOR IT TO SAY WHEN CONVERSATION IS OVER
     
 
-def check_for_person(start_time):
-    cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
-    body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
-    while start_time + 7 > time.time():
+# def check_for_person(start_time):
+#     cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
+#     body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
+#     while start_time + 7 > time.time():
 
-        capture = device.update()
+#         capture = device.update()
 
-        ret_color, color_image = capture.get_color_image()
+#         ret_color, color_image = capture.get_color_image()
 
-        if not ret_color:
-            continue
+#         if not ret_color:
+#             continue
 
-        gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
+#         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 
-        bodies = body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+#         bodies = body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-        for (x, y, w, h) in bodies:
-            cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
-            converse()
-            print("Saw a person. Going to continue the conversion!\n")
+#         for (x, y, w, h) in bodies:
+#             cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
+#             converse()
+#             print("Saw a person. Going to continue the conversion!\n")
 
-        cv2.imshow('Body detection', color_image)
+#         cv2.imshow('Body detection', color_image)
 
-        if cv2.waitKey(1) == ord('q'):
-            break
+#         if cv2.waitKey(1) == ord('q'):
+#             break
 
+
+
+robot_x = 0
+robot_y = 0
 
 client = roslibpy.Ros(host="0.0.0.0", port=9090)
 client.run()
 print("IS ROS CONNECTED ", client.is_connected)
 
+def pose_callback(message):
+    global robot_x, robot_y
+    robot_x = message['translation']['x']
+    robot_y = message['translation']['y']
+
+# Subscribe to the robot's pose topic]
+tf_client = roslibpy.tf.TFClient(client, "/2ndFloorWhole_map")
+tf_client.subscribe("base_link", pose_callback)
+
+def send_data():
+    global robot_x,robot_y
+    while True:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(('10.0.0.145', 23457))
+        tf_client.subscribe("base_link", pose_callback)
+        message = json.dumps([robot_x, robot_y])
+        client_socket.sendall(message.encode())
+
+        # receive the servers response
+        response = client_socket.recv(1024).decode()
+        print("Response from server:", response)
+
+        if (response == "conversation started"):
+            cancel_goal_with_timeout()
+
+        client_socket.close()
+        time.sleep(0.5)
+
 action_client = roslibpy.actionlib.ActionClient(
     client, "/move_base", "move_base_msgs/MoveBaseAction" )
+
 
 # target is (x, y, quat z, quat w)
 def go_to_pos(target):
@@ -162,51 +196,43 @@ def go_to_pos(target):
     move_goal.send()
 
     #TODO Body Detection more accurately
-    cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
-    body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
+    # cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
+    # body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
     while move_goal is not None and not move_goal.is_finished:
-
-        capture = device.update()
-        ret_color, color_image = capture.get_color_image()
-
-        if not ret_color:
-            continue
-        gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-        bodies = body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-
-        for (x, y, w, h) in bodies:
-            cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
-            global incomplete_action
-            incomplete_action = True
-            cancel_goal()
+        if (start_convo):
             converse()
-            print("Person detected! Starting a conversation\n")
+        continue
 
-        cv2.imshow('Body detection', color_image)
-
-        if cv2.waitKey(1) == ord('q'):
-            break
-
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()
 
 def cancel_goal():
-    
     global move_goal
     if move_goal is not None:
         print("move goal cancelled")
         move_goal.cancel()
         move_goal = None
 
+start_convo = False
+def cancel_goal_with_timeout():
+   global move_goal, start_convo
+   if move_goal is not None:
+       print("l;asf;djashf;lsnf;lashdglksadgkas")
+       move_goal.cancel()
+       start_convo = True
+       move_goal = None
+
 
 positions = {
     "tv_screen": [-0.424, 6.777, 0.217, 1.0],
     "coffee_table": [-0.619, -0.202, 0.217, 1.0]
+    # "red_line_hallway": [4.493, -2.265, 0.217, 1.0],
+    # "down_the_hallway": [4.622, 8.359, 0.217, 1.0]
 }
 
+send_data_thread = threading.Thread(target=send_data)
+send_data_thread.start()
+
 while True:
-    with open("conversation.txt", "w") as file:
-        file.write("")
-        file.close()
     if incomplete_action:
         incomplete_action = False
         go_to_pos(last_destination)
