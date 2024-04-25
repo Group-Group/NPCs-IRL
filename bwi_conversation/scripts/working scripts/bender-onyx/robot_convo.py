@@ -6,10 +6,14 @@ import time
 import speech_recognition as sr
 import platform
 import os
-import os
 import random
 from openai import OpenAI
 from pathlib import Path
+import roslibpy.tf
+import socket
+import threading
+import json
+import math
 
 last_destination = None
 incomplete_action = False
@@ -71,43 +75,46 @@ def text_to_audio(text, language='en'):
 
 
 def converse():
+    with open("conversation.txt", "r") as file:
+        convo = file.read()
+        file.close()
+    if convo == "":
+        generated_response = AIc.chat.completions.create(
+        messages=[
+                {
+                    "role": "user",
+                    "content": "You are a BWI robot, circiling the robotics lab and ran into a person and they started talking to you. Respond to them with a casual greeting and reply to them if needed. Only write your response.",
+                }
+            ],
+            model="gpt-3.5-turbo",
+        )
+
+        response = generated_response.choices[0].message.content
+    else:
+        generated_response = AIc.chat.completions.create(
+        messages=[
+                {
+                    "role": "user",
+                    "content": "You are a BWI robot, currently in a casual conversation with a person. The conversation so far has been \"" + convo + "\". They just said \"" + recognized_text + "\". Respond to them with a casual conversational response. Only write your response.",
+                }
+            ],
+            model="gpt-3.5-turbo",
+        )
+
+        response = generated_response.choices[0].message.content
+    text_to_audio(response)
+
+    
     recognized_text = recognize_speech()
-    if recognized_text:
+    while not recognized_text:
         print("You said:", recognized_text)
         with open("conversation.txt", "r") as file:
             convo = file.read()
             file.close()
-        if convo == "":
-            generated_response = AIc.chat.completions.create(
-            messages=[
-                    {
-                        "role": "user",
-                        "content": "You are a BWI robot, circiling the robotics lab and ran into a person and they started talking to you. They said \"" + recognized_text + "\". Respond to them with a casual greeting and reply to them if needed. Only write your response.",
-                    }
-                ],
-                model="gpt-3.5-turbo",
-            )
-
-            response = generated_response.choices[0].message.content
-        else:
-            generated_response = AIc.chat.completions.create(
-            messages=[
-                    {
-                        "role": "user",
-                        "content": "You are a BWI robot, currently in a casual conversation with a person. The conversation so far has been \"" + convo + "\". They just said \"" + recognized_text + "\". Respond to them with a casual conversational response. Only write your response.",
-                    }
-                ],
-                model="gpt-3.5-turbo",
-            )
-
-            response = generated_response.choices[0].message.content
-        
         with open("conversation.txt", "a") as file:
             file.write("\nPerson: " + recognized_text + "\nRobot: " + response)
             file.close()
-        text_to_audio(response)
-    check_for_person(time.time()) # TODO GET A WORD FOR IT TO SAY WHEN CONVERSATION IS OVER
-    
+    converse()
 
 def check_for_person(start_time):
     cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
@@ -165,29 +172,9 @@ def go_to_pos(target):
     cv2.namedWindow('Body detection', cv2.WINDOW_NORMAL)
     body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
     while move_goal is not None and not move_goal.is_finished:
-
-        capture = device.update()
-        ret_color, color_image = capture.get_color_image()
-
-        if not ret_color:
-            continue
-        gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-        bodies = body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-
-        for (x, y, w, h) in bodies:
-            cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
-            global incomplete_action
-            incomplete_action = True
-            cancel_goal()
+        if start_convo:
             converse()
-            print("Person detected! Starting a conversation\n")
-
-        cv2.imshow('Body detection', color_image)
-
-        if cv2.waitKey(1) == ord('q'):
-            break
-
-cv2.destroyAllWindows()
+        continue
 
 def cancel_goal():
     
@@ -198,15 +185,107 @@ def cancel_goal():
         move_goal = None
 
 
+
+
+other_robot_pos = [0, 0]
+
+robot_x = 0
+robot_y = 0
+# Function to handle client connections
+def handle_client(client_socket, client_address):
+    global other_robot_pos
+    print(f"Connection from {client_address}")
+    
+    # Receive data from the client
+    data = client_socket.recv(1024)  # Adjust buffer size as needed
+    # print("Received:", data.decode())
+
+    other_robot_pos = json.loads(data.decode())
+
+    # Check if the received data indicates the presence of a person
+        # Take appropriate action when a person is detected
+    
+    # Send a message back to the client
+    if math.sqrt(pow(robot_x - other_robot_pos[0], 2) + pow(robot_y - other_robot_pos[1], 2)) < 2:
+        print("WITHIN RANGE")
+        response_message = "conversation started"
+        client_socket.sendall(response_message.encode())
+        client_socket.close()
+        cancel_goal_with_timeout()
+    else:
+    # Close the connection
+        client_socket.close()
+        print(f"Connection with {client_address} closed")
+
+# Define host and port
+HOST = '10.0.0.145'  # Use 0.0.0.0 to listen on all available interfaces
+PORT = 23457      # Choose a port (e.g., 12345)
+
+# Create a socket object
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# Bind the socket to the address and port
+server_socket.bind((HOST, PORT))
+
+# Listen for incoming connections
+server_socket.listen()
+
+print(f"Server listening on {HOST}:{PORT}") 
+
+# Function to run the server loop
+def run_server():
+    while True:
+        # Accept incoming connections
+        client_socket, client_address = server_socket.accept()
+        # Handle the client connection in a separate thread
+        client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
+        client_thread.start()
+
+# Start the server loop in a separate thread
+server_thread = threading.Thread(target=run_server)
+server_thread.start()
+
+
+def pose_callback(message):
+   global robot_x, robot_y
+   robot_x = message['translation']['x']
+   robot_y = message['translation']['y']
+#    print("my_x: " + str(robot_x) + "  my_y: " + str(robot_y))
+
+
+
+
+# Subscribe to the robot's pose topic]
+tf_client = roslibpy.tf.TFClient(client, "/2ndFloorWhole_map")
+tf_client.subscribe("base_link", pose_callback)
+
+def send_data():
+   while True:
+       global robot_x, robot_y
+       tf_client.subscribe("base_link", pose_callback)
+       time.sleep(0.5)
+
+send_data_thread = threading.Thread(target=send_data)
+send_data_thread.start()
+
 positions = {
     "tv_screen": [-0.424, 6.777, 0.217, 1.0],
     "coffee_table": [-0.619, -0.202, 0.217, 1.0]
 }
 
+start_convo = False
+
+def cancel_goal_with_timeout():
+    global move_goal, start_convo
+    if move_goal is not None:
+        print("ESFHISEJFOISHOSRHIOGSGISIROGSRI")
+        start_convo = True
+        move_goal.cancel()
+        move_goal = None
+        
+
+
 while True:
-    with open("conversation.txt", "w") as file:
-        file.write("")
-        file.close()
     if incomplete_action:
         incomplete_action = False
         go_to_pos(last_destination)
