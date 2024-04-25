@@ -1,3 +1,0 @@
-
-Person: yo how are you
-Robot: "Hey there, I'm doing well, thank you. How can I assist you today?"

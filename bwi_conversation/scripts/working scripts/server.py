@@ -1,40 +1,48 @@
 import socket
+import threading
 
-# Define host and port
-HOST = '10.0.0.145'  # Use 0.0.0.0 to listen on all available interfaces
-PORT = 12345      # Choose a port (e.g., 12345)
-PORT2 = 23456
+data=None
 
-# Create a socket object
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def handle_client(client_socket):
+    # Receive data from the client
+    global data 
+    data = client_socket.recv(1024)  # Adjust buffer size as needed
+    print(f"Received: {data.decode()} from {client_socket.getpeername()}")
+    data = data.decode()
+    # Close the connection
+    client_socket.close()
 
-# Bind the socket to the address and port
-server_socket.bind((HOST, PORT))
-server_socket2.bind((HOST, PORT2))
+def generate_data():
+    global data
+    return data
 
-# Listen for incoming connections
-server_socket.listen()
-server_socket2.listen()
+def start_server(port):
+    global data
+    # Define host
+    HOST = '10.0.0.145'  # Use 0.0.0.0 to listen on all available interfaces
 
-print(f"Server listening on {HOST}:{PORT}")
-print(f"Server listening on {HOST}:{PORT2}")
+    # Create a socket object
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Bind the socket to the address and port
+    server_socket.bind((HOST, port))
+
+    # Listen for incoming connections
+    server_socket.listen()
+
+    print(f"Server listening on {HOST}:{port}")
+
+    while True:
+        # Accept incoming connections
+        client_socket, client_address = server_socket.accept()
+        print(f"Connection from {client_address}")
+
+        # Handle the client in a separate thread
+        client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+        client_thread.start()
 
 
-# Accept incoming connections
-client_socket, client_address = server_socket.accept()
-client_socket2, client_address2 = server_socket2.accept()
-print(f"Connection from {client_address}")
-
-# Receive data from the client
-data = client_socket.recv(1024)  # Adjust buffer size as needed
-data2 = client_socket2.recv(2048)  # Adjust buffer size as needed
-print("Received:", data.decode())
-print("Received2:", data2.decode())
-
-# Close the connection
-client_socket.close()
-client_socket2.close()
-server_socket.close()
-server_socket2.close()
-
+# If you want to start the server immediately when this script is run,
+# you can call start_server with a specific port
+if __name__ == "__main__":
+    start_server(12345)  # Change the port number as needed
