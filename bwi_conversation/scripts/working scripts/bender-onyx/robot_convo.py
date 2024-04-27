@@ -259,6 +259,8 @@ def pose_callback(message):
 tf_client = roslibpy.tf.TFClient(client, "/2ndFloorWhole_map")
 tf_client.subscribe("base_link", pose_callback)
 
+#! help
+""" what does this do and why is it threaded """
 def send_data():
    while True:
        global robot_x, robot_y
