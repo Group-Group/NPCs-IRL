@@ -7,7 +7,7 @@ while True:
         nova.completed_last_action = True
         nova.move_to(nova.last_destination)
     else:
-        next_destination = random.choice(bwibots.landmarks)
+        next_destination = random.choice(list(bwibots.landmarks.keys()))
         if next_destination == nova.last_destination:
             continue
 
@@ -15,5 +15,10 @@ while True:
         nova.move_to(next_destination)
 
     while nova.active_goal is not None and not nova.active_goal.is_finished:
-        nova.vision.check_for_person()
-        flagged_for_conversation = nova.vision.detects_person()
+        # nova.vision.check_for_person()
+        flagged_for_conversation = nova.prompted_for_conversation() # nova.vision.detects_person()
+
+        if (flagged_for_conversation):
+            nova.cancel_goal()
+            while True:
+                nova.respond()
