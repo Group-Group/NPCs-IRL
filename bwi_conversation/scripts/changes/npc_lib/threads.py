@@ -1,0 +1,175 @@
+import roslibpy
+import roslibpy.tf
+import threading
+import socket
+import json
+import math
+import time
+
+HOST = '10.0.0.145'
+PORT = 23478
+
+PROXIMITY_METERS = 2
+
+class ClientThreadHandle:
+    """
+    ThreadHandle handles the client thread and ROS. 
+    ### Attributes
+    * `last_response_from_server`
+    """
+    def __init__(self, client):
+        self.rh = ROSLocationHandle(client) # ros handle
+        self.last_response_from_server = None
+
+        ch = ClientHandle()
+        ch.connect_to_server()
+        self.ch = ch
+        self.client_socket = ch.client_socket
+
+        thread = threading.Thread(target=self.send_pos_to_server)
+        thread.start()
+
+    def send_pos_to_server(self):
+        while True:
+            x, y = self.rh.get_location()
+            # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            # while True:
+            #     try:
+            #         # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #         client_socket.connect((HOST, PORT))
+            #         print("Connected to server successfully!")
+            #         break
+            #     except ConnectionRefusedError:
+            #         print("Connection refused. Retrying in 0.5 seconds...")
+            #         time.sleep(0.5)
+            #     except Exception as e:
+            #         print("An error occurred:", e)
+            #         return
+
+            message = json.dumps([x, y])
+            self.client_socket.sendall(message.encode())
+
+            # receive the servers response
+            response = self.client_socket.recv(1024).decode()
+            self.last_response_from_server = response
+            print(f"Response from server: {response}")
+
+            # self.client_socket.close()
+            time.sleep(0.5)
+
+class ServerThreadHandle:
+    """
+    SeverThreadHandle handles the server thread and ROS. 
+    ### Attributes
+    * `last_message_sent`
+    """
+    def __init__(self, client):
+        self.rh = ROSLocationHandle(client) # ros handle
+        self.last_location_seen = None # location of other robot
+        self.last_message_sent = None
+
+        sh = ServerHandle()
+        sh.start_server()
+        self.sh = sh
+        self.server_socket = sh.server_socket
+
+        thread = threading.Thread(target=self.run_server)
+        thread.start()
+
+    def run_server(self):
+        while True:
+            client_socket, client_addr = self.server_socket.accept()
+            client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_addr))
+            client_thread.start()
+    
+    def handle_client(self, client_socket, client_addr):
+        print(f"Connection from {client_addr}")
+        data = client_socket.recv(1024)
+        x, y = json.loads(data.decode())
+        self.last_location_seen = (x, y)
+
+        # send a message back to client when in range
+        if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
+            print("IN RANGE")
+            response_message = "conversation started"
+            client_socket.sendall(response_message.encode())
+        
+        #! what happens if i dont close this
+        # print(f"Connection with {client_addr} closed")
+        # client_socket.close()
+
+class ClientHandle:
+    """
+    `ClientHandle` handles starting and stopping the client socket.
+    ### Methods
+    * `connect_to_server`
+    * `close_connection_to_server`
+
+    ### Attributes
+    * `client_socket`
+    """
+    def __init__(self):
+        self.client_socket = None
+    
+    def connect_to_server(self, host=HOST, port=PORT, timeout=float('inf')):
+        start = time.time()
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        while time.time() - start < timeout:
+            try:
+                client_socket.connect((host, port))
+                print("Connected to server successfully!")
+                self.client_socket = client_socket
+                return
+            except ConnectionRefusedError:
+                print("Connection refused. Retrying in 0.5 seconds...")
+                time.sleep(0.5)
+
+        raise TimeoutError(
+            f"Request to connect to server (host={host}, port={port}) timed out.")
+
+    def close_connection_to_server(self):
+        self.client_socket.close()
+
+class ServerHandle:
+    """
+    `ServerHandle` handles starting and stopping the server socket
+    ### Methods
+    * `start_server`
+    * `stop_server`
+
+    ### Attributes
+    * `server_socket`
+    """
+    def __init__(self):
+        self.server_socket = None
+    
+    def start_server(self, host=HOST, port=PORT):
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.bind((host, port))
+        server_socket.listen()
+        self.server_socket = server_socket
+        print(f"Server listening on {host}:{port}")
+
+    def stop_server(self):
+        print("Stopping server")
+        self.server_socket.shutdown()
+        self.server_socket.close()
+
+class ROSLocationHandle:
+    def __init__(self, client):
+        # client is a roslibpy.Ros object
+        self.x = 0
+        self.y = 0
+
+        # subscribe to the robot's position
+        self.tf_client = roslibpy.tf.TFClient(client, "/2ndFloorWhole_map")
+        self.tf_client.subscribe("base_link", self.callback)
+
+    def callback(self, msg):
+        self.x = msg['translation']['x']
+        self.y = msg['translation']['y']
+
+    def get_location(self):
+        return (self.x, self.y)
