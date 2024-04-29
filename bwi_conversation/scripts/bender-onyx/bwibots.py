@@ -5,13 +5,10 @@ import roslibpy
 import threads
 import bwi_vision
 from pathlib import Path
-import platform
-import os
 
-import time
 import socket
-from pydub import AudioSegment
 from playsound import playsound
+import spacy
 
 """ some constants """
 
@@ -138,6 +135,27 @@ class bwirobot:
         todo do i want this in here or should it be a different method
         """
 
+    def move_to_other_robot(self, pos_x, pos_y):
+        message = {
+            "target_pose": {
+                "header": {"frame_id": "level_mux_map"},
+                "pose": {
+                    "position": {"x": pos_x, "y": pos_y, "z": 0.0},
+                    "orientation": {"x": 0.0, "y": 0.0, "z": 0.217, "w": 1.0}, # may need to chamge
+                },
+            }
+        }
+
+        move_goal = roslibpy.actionlib.Goal(self.action_client, message)
+        move_goal.send()
+
+        self.active_goal = move_goal
+        
+        """
+        todo need to decide how to handle the looking for people part
+        todo do i want this in here or should it be a different method
+        """
+
     def cancel_goal(self):
         if self.active_goal:
             print("cancelling goal")
@@ -197,6 +215,18 @@ class serverbot(bwirobot):
                 content = "They said " + response + " write an appropriate response to them."
             else:
                 content = "You are a BWI robot that is an absolute giga chad circling the robotics lab and you ran into a submissive robot. Introduce yourself and ask them about their plans. Write only what you would say."
+            
+            nlp = spacy.load("en_core_web_md")
+            input_phrase = response
+            doc_input = nlp(input_phrase)
+            doc_compare = nlp("Goodbye")
+
+            similarity_score = doc_input.similarity(doc_compare)
+            threshold = 0.7
+
+            if similarity_score >= threshold:
+                break
+
 
             generated_response = AIc.chat.completions.create(
                 messages=[

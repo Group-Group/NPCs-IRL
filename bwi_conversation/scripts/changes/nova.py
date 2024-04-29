@@ -41,5 +41,6 @@ while True:
                 nova.leave_conversation_server()
 
     except:
+        nova.cancel_goal()
         # nova.vision.close()
         break

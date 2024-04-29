@@ -20,5 +20,4 @@ while True:
 
         if (flagged_for_conversation):
             nova.cancel_goal()
-            while True:
-                nova.respond()
+            nova.respond()

@@ -49,6 +49,7 @@ class ServerThreadHandle:
     def __init__(self, client):
         self.rh = ROSLocationHandle(client) # ros handle
         self.last_message_sent = None
+        self.last_location_seen = None
 
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((HOST, PORT))
@@ -71,6 +72,7 @@ class ServerThreadHandle:
         data = client_socket.recv(1024)
         other_robot_pos = json.loads(data.decode())
         other_robot_pos = (other_robot_pos[0], other_robot_pos[1])
+        self.last_location_seen = other_robot_pos
 
         # send a message back to client when in range
         if math.dist(self.rh.get_location(), other_robot_pos) < PROXIMITY_METERS:

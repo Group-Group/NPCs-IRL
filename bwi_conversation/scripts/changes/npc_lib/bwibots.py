@@ -6,7 +6,7 @@ import roslibpy
 from pathlib import Path
 
 from .threads import PORT, ClientHandle, ServerHandle, ClientThreadHandle, ServerThreadHandle
-from .bwi_vision import bwivision
+# from .bwi_vision import bwivision
 from .chatsession import ChatSession
 
 
@@ -40,7 +40,7 @@ class bwirobot:
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
         self.chat = None # []
-        self.vision = bwivision()
+        # self.vision = bwivision()
 
     def ask_chat(self, prompt):
         self.chat.log_prompt(prompt)

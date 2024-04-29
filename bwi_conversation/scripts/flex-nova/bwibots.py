@@ -5,14 +5,10 @@ import roslibpy
 import threads
 import bwi_vision
 from pathlib import Path
-import platform
-import os
 
 import socket
-import time
 from mutagen.mp3 import MP3
-from pydub import AudioSegment
-import simpleaudio as sa
+import spacy
 from playsound import playsound
 
 
@@ -105,6 +101,17 @@ class bwirobot:
             response = client_socket.recv(1024).decode()
             print("Received from server: ", response)
             self.chat.append(response)
+
+            nlp = spacy.load("en_core_web_md")
+            input_phrase = response
+            doc_input = nlp(input_phrase)
+            doc_compare = nlp("Goodbye")
+
+            similarity_score = doc_input.similarity(doc_compare)
+            threshold = 0.7
+
+            if similarity_score >= threshold:
+                break
 
             generated_response = AIc.chat.completions.create(
                 messages=[
