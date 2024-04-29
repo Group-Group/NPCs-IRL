@@ -22,7 +22,7 @@ while True:
 
         if (flagged_for_conversation):
             bender.cancel_goal()
-            
+            bender.move_to_other_robot(bender.th.last_location_seen[0], bender.th.last_location_seen[1])
             while True:
                 bender.start_conversation()
             

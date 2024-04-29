@@ -224,9 +224,8 @@ class serverbot(bwirobot):
             similarity_score = doc_input.similarity(doc_compare)
             threshold = 0.7
 
-            if similarity_score >= threshold:
+            if similarity_score >= threshold or len(self.chat) >= 10:
                 break
-
 
             generated_response = AIc.chat.completions.create(
                 messages=[
