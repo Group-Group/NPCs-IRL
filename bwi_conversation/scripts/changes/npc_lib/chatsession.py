@@ -1,8 +1,7 @@
-import socket
 import json
 import random
 
-class chatsession:
+class ChatSession:
     """
     `chatsession` handles sending and receiving messages and keeps track of the chat history.
     ### Methods

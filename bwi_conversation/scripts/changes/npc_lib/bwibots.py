@@ -5,9 +5,9 @@ import roslibpy.actionlib
 import roslibpy
 from pathlib import Path
 
-import threads
-import bwi_vision
-from chatsession import chatsession
+from .threads import PORT, ClientHandle, ServerHandle, ClientThreadHandle, ServerThreadHandle
+from .bwi_vision import bwivision
+from .chatsession import ChatSession
 
 
 """ some constants """
@@ -40,7 +40,7 @@ class bwirobot:
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
         self.chat = None # []
-        self.vision = bwi_vision.bwivision()
+        self.vision = bwivision()
 
     def ask_chat(self, prompt):
         self.chat.log_prompt(prompt)
@@ -102,7 +102,7 @@ class bwirobot:
         return self.chat
 
         # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # client_socket.connect((threads.HOST, threads.PORT + 1000))
+        # client_socket.connect((HOST, PORT + 1000))
         # print("Connected to server successfully!")
 
         # print("waiting for response")
@@ -169,17 +169,17 @@ class clientbot(bwirobot):
         client.run()
         super().__init__(client)
         self.ch = None # client handle
-        self.th = threads.ClientThreadHandle(client)
+        self.th = ClientThreadHandle(client)
 
     def prompted_for_conversation(self):
         return self.th.last_response_from_server == "conversation started"
 
     def join_conversation_server(self):
-        ch = threads.ClientHandle()
-        ch.connect_to_server(port=threads.PORT + 1000)
+        ch = ClientHandle()
+        ch.connect_to_server(port=PORT + 1000)
         self.ch = ch
 
-        chat = chatsession(ch.client_socket)
+        chat = ChatSession(ch.client_socket)
         chat.log_prompt("You are submissive robot and you are currently in a conversation with an alpha male robot. Write an appropriate response to them with your personality.")
         self.chat = chat
         return chat
@@ -202,10 +202,10 @@ class serverbot(bwirobot):
         client = roslibpy.Ros(host="0.0.0.0", port=9090)
         client.run()
         super().__init__(client)
-        sh = threads.ServerHandle()
-        sh.start_server(port=threads.PORT + 1000)
+        sh = ServerHandle()
+        sh.start_server(port=PORT + 1000)
         self.sh = sh
-        self.th = threads.ServerThreadHandle(client)
+        self.th = ServerThreadHandle(client)
 
     def prompts_conversation(self):
         return self.th.last_message_sent == "conversation started"
@@ -217,7 +217,7 @@ class serverbot(bwirobot):
         client_socket, client_addr = self.sh.server_socket.accept()
         print(f"client connected at {client_addr}.")
 
-        chat = chatsession(client_socket)
+        chat = ChatSession(client_socket)
         self.chat = chat
         response, raw = self.ask_chat("You are a BWI robot that is an absolute giga chad circling the robotics lab and you ran into a submissive robot. Introduce yourself and ask them about their plans. Write only what you would say.")
         self.speak(response)
