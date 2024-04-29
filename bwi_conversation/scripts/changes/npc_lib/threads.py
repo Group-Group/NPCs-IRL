@@ -23,6 +23,7 @@ class ClientThreadHandle:
 
         ch = ClientHandle()
         ch.connect_to_server()
+        print("Connected to ROS location server.")
         self.ch = ch
         self.client_socket = ch.client_socket
 
@@ -32,21 +33,6 @@ class ClientThreadHandle:
     def send_pos_to_server(self):
         while True:
             x, y = self.rh.get_location()
-            # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            # while True:
-            #     try:
-            #         # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #         client_socket.connect((HOST, PORT))
-            #         print("Connected to server successfully!")
-            #         break
-            #     except ConnectionRefusedError:
-            #         print("Connection refused. Retrying in 0.5 seconds...")
-            #         time.sleep(0.5)
-            #     except Exception as e:
-            #         print("An error occurred:", e)
-            #         return
-
             message = json.dumps([x, y])
             self.client_socket.sendall(message.encode())
 
@@ -55,7 +41,6 @@ class ClientThreadHandle:
             self.last_response_from_server = response
             print(f"Response from server: {response}")
 
-            # self.client_socket.close()
             time.sleep(0.5)
 
 class ServerThreadHandle:
@@ -63,6 +48,7 @@ class ServerThreadHandle:
     SeverThreadHandle handles the server thread and ROS. 
     ### Attributes
     * `last_message_sent`
+    * `last_location_seen`
     """
     def __init__(self, client):
         self.rh = ROSLocationHandle(client) # ros handle
@@ -93,9 +79,9 @@ class ServerThreadHandle:
         if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
             print("IN RANGE")
             response_message = "conversation started"
+            self.last_message_sent = response_message
             client_socket.sendall(response_message.encode())
         
-        #! what happens if i dont close this
         # print(f"Connection with {client_addr} closed")
         # client_socket.close()
 

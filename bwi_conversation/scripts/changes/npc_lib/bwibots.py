@@ -168,7 +168,9 @@ class clientbot(bwirobot):
         client = roslibpy.Ros(host="0.0.0.0", port=9090)
         client.run()
         super().__init__(client)
-        self.ch = None # client handle
+        self.ch = None # client handle, when we need to join a conversation server
+
+        # to send our position to the server
         self.th = ClientThreadHandle(client)
 
     def prompted_for_conversation(self):
@@ -202,9 +204,13 @@ class serverbot(bwirobot):
         client = roslibpy.Ros(host="0.0.0.0", port=9090)
         client.run()
         super().__init__(client)
+
+        # start a conversation server
         sh = ServerHandle()
         sh.start_server(port=PORT + 1000)
         self.sh = sh
+
+        # start a ROS location server
         self.th = ServerThreadHandle(client)
 
     def prompts_conversation(self):

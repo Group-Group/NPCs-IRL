@@ -48,4 +48,4 @@ class bwivision:
             self.person_detected = True
 
         cv2.imshow('Body detection', color_image)
-        cv2.waitKey(1)
+        #cv2.waitKey(1)
