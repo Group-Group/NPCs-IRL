@@ -43,13 +43,19 @@ class bwirobot:
         # self.vision = bwivision()
 
     def ask_chat(self, prompt):
+        print("logging")
+        print(prompt)
         self.chat.log_prompt(prompt)
+        print("logged")
+        print(self.chat.history)
+
 
         generated_response = AIc.chat.completions.create(
                 messages=self.chat.history,
                 model="gpt-3.5-turbo"
         )
 
+        print("generated answer")
         text = generated_response.choices[0].message.content
         raw = generated_response.choices[0].message
 
@@ -96,42 +102,12 @@ class bwirobot:
         print(f"received response: {other_response}")
         response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
 
+        print("speaking")
         self.speak(response)
 
+        print("sending message")
         self.chat.send_message(raw)
         return self.chat
-
-        # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # client_socket.connect((HOST, PORT + 1000))
-        # print("Connected to server successfully!")
-
-        # print("waiting for response")
-        # while True:
-        #     response = client_socket.recv(1024).decode()
-        #     print("Received from server: ", response)
-        #     self.chat.append(response)
-
-        #     generated_response = AIc.chat.completions.create(
-        #         messages=[
-        #             {
-        #                 "role": "user",
-        #                 "content": "You are submissive robot and you are currently in a conversation with an alpha male robot. They said " + response + " write an appropriate response to them with your personality."
-        #             },
-        #         ],
-        #         model="gpt-3.5-turbo"
-        #     )
-
-        #     this_response = generated_response.choices[0].message.content
-        #     self.chat.append(this_response)
-        #     self.speak(this_response)
-        #     # audio = AudioSegment.from_file("output.mp3")
-        #     # length_ms = len(audio)
-        #     # length_seconds = length_ms / 1000
-        #     print("sending my response")
-        #     client_socket.sendall(this_response.encode())
-
-        #     # Close socket
-        # client_socket.close()
 
     def move_to(self, target):
         print("going to " + str(target))
@@ -225,7 +201,7 @@ class serverbot(bwirobot):
 
         chat = ChatSession(client_socket)
         self.chat = chat
-        response, raw = self.ask_chat("You are a BWI robot that is an absolute giga chad circling the robotics lab and you ran into a submissive robot. Introduce yourself and ask them about their plans. Write only what you would say.")
+        response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a robot. Introduce yourself and ask them about their plans. Write only what you would say.")
         self.speak(response)
 
         chat.send_message(raw)

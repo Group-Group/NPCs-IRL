@@ -7,7 +7,7 @@ import math
 import time
 
 HOST = '10.0.0.145'
-PORT = 23478
+PORT = 23484
 
 PROXIMITY_METERS = 2
 
@@ -70,17 +70,22 @@ class ServerThreadHandle:
             client_thread.start()
     
     def handle_client(self, client_socket, client_addr):
-        print(f"Connection from {client_addr}")
-        data = client_socket.recv(1024)
-        x, y = json.loads(data.decode())
-        self.last_location_seen = (x, y)
+        while True:
+            print(f"Connection from {client_addr}")
+            data = client_socket.recv(1024)
+            x, y = json.loads(data.decode())
+            print(f"Received coordinates from client: ({x}, {y})")
+            self.last_location_seen = (x, y)
 
-        # send a message back to client when in range
-        if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
-            print("IN RANGE")
-            response_message = "conversation started"
-            self.last_message_sent = response_message
-            client_socket.sendall(response_message.encode())
+            # send a message back to client when in range
+            if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
+                print("IN RANGE")
+                response_message = "conversation started"
+                self.last_message_sent = response_message
+                client_socket.sendall(response_message.encode())
+            else:
+                response_message = ""
+                client_socket.sendall(response_message.encode())
         
         # print(f"Connection with {client_addr} closed")
         # client_socket.close()

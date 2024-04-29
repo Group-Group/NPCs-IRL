@@ -7,7 +7,7 @@ import math
 import time
 
 HOST = '10.0.0.145'
-PORT = 23478
+PORT = 23479
 
 PROXIMITY_METERS = 2
 

@@ -213,20 +213,20 @@ class serverbot(bwirobot):
                 print(response)
                 self.chat.append(response)
                 content = "They said " + response + " write an appropriate response to them."
+                nlp = spacy.load("en_core_web_md")
+                input_phrase = response
+                doc_input = nlp(input_phrase)
+                doc_compare = nlp("Goodbye")
+
+                similarity_score = doc_input.similarity(doc_compare)
+                threshold = 0.7
+
+                if similarity_score >= threshold or len(self.chat) >= 10:
+                    break
             else:
                 content = "You are a BWI robot that is an absolute giga chad circling the robotics lab and you ran into a submissive robot. Introduce yourself and ask them about their plans. Write only what you would say."
             
-            nlp = spacy.load("en_core_web_md")
-            input_phrase = response
-            doc_input = nlp(input_phrase)
-            doc_compare = nlp("Goodbye")
-
-            similarity_score = doc_input.similarity(doc_compare)
-            threshold = 0.7
-
-            if similarity_score >= threshold or len(self.chat) >= 10:
-                break
-
+            
             generated_response = AIc.chat.completions.create(
                 messages=[
                     {

@@ -23,22 +23,32 @@ class ChatSession:
         """ log user prompts """
         # format properly
         logged = {
-            "role": "user",
-            "content": prompt
+            'role': 'user',
+            'content': prompt
         }
         self.history.append(logged)
     
     def wait_for_message(self):
         response = self.conversation_socket.recv(1024).decode()
-        self.history.append(response)
-
+        print("Received response")
         # break down into text
         response = json.loads(response)
+        self.history.append(response)
         return response["content"]
 
     def send_message(self, message):
         """ log a formatted message in chat history and send it to the server / client """
-        self.history.append(message)
-        self.is_ongoing = len(self.chat) / 2 < self.max_messages
-        message = json.dumps(message)
-        self.conversation_socket.sendall(message.encode())
+        
+        print("\n" * 50)
+        # format message as dictionary
+        formatted = {
+            'role': 'assistant',
+            'content': message.content,
+        }
+        
+        self.is_ongoing = len(self.history) / 2 < self.max_messages
+        self.history.append(formatted)
+        formatted = json.dumps(formatted)
+        self.conversation_socket.sendall(formatted.encode())
+
+        print("Sent message ", formatted)
