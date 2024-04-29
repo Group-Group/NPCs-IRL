@@ -2,7 +2,6 @@ import random
 from npc_lib import bwibots
 
 bender = bwibots.serverbot()
-bender.move_to('tv_screen')
 while True:
     try:
         if not bender.completed_last_action:
@@ -32,5 +31,6 @@ while True:
                 bender.chat = None
 
     except:
+        bender.cancel_goal()
         bender.vision.close()
         break
