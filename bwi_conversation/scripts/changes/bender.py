@@ -2,8 +2,9 @@ import random
 from npc_lib import bwibots
 
 bender = bwibots.serverbot()
-while True:
-    # try:
+
+try:
+    while True:
         if not bender.completed_last_action:
             bender.completed_last_action = True
             bender.move_to(bender.last_destination)
@@ -22,7 +23,7 @@ while True:
 
             if (flagged_for_conversation):
                 bender.cancel_goal()
-                # bender.move_to(bender.th.last_location_seen)
+                bender.move_to(bender.thread.last_location_seen)
                 chat = bender.start_conversation()
                 
                 while chat.is_ongoing:
@@ -30,7 +31,7 @@ while True:
 
                 bender.chat = None
 
-    # except:
-    #     bender.cancel_goal()
-    #     # bender.vision.close()
-    #     break
+except Exception as e:
+    print(e)
+    bender.cancel_goal()
+    # bender.vision.close()

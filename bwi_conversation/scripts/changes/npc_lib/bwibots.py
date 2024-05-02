@@ -5,7 +5,7 @@ import roslibpy.actionlib
 import roslibpy
 from pathlib import Path
 
-from .threads import PORT, ClientHandle, ServerHandle, ClientThreadHandle, ServerThreadHandle
+from .threads import PORT, Client, Server, ClientThread, ServerThread
 # from .bwi_vision import bwivision
 from .chatsession import ChatSession
 
@@ -43,19 +43,13 @@ class bwirobot:
         # self.vision = bwivision()
 
     def ask_chat(self, prompt):
-        print("logging")
-        print(prompt)
         self.chat.log_prompt(prompt)
-        print("logged")
-        print(self.chat.history)
-
 
         generated_response = AIc.chat.completions.create(
                 messages=self.chat.history,
                 model="gpt-3.5-turbo"
         )
 
-        print("generated answer")
         text = generated_response.choices[0].message.content
         raw = generated_response.choices[0].message
 
@@ -95,7 +89,7 @@ class bwirobot:
         playsound(speech_file_path)
         
     def respond(self):
-        """ need logic for people / robot convo """
+        """ need logic for people convo """
         print("waiting for a response")
         other_response = self.chat.wait_for_message()
 
@@ -111,12 +105,17 @@ class bwirobot:
 
     def move_to(self, target):
         print("going to " + str(target))
+
+        if type(target) == str: # target is in the landmarks dict
+            self.last_destination = target
+            target = landmarks[target]
+
         message = {
             "target_pose": {
                 "header": {"frame_id": "level_mux_map"},
                 "pose": {
-                    "position": {"x": landmarks[target][0], "y": landmarks[target][1], "z": 0.0},
-                    "orientation": {"x": 0.0, "y": 0.0, "z": landmarks[target][2], "w": landmarks[target][3]},
+                    "position": {"x": target[0], "y": target[1], "z": 0.0},
+                    "orientation": {"x": 0.0, "y": 0.0, "z": target[2], "w": target[3]},
                 },
             }
         }
@@ -125,7 +124,6 @@ class bwirobot:
         move_goal.send()
 
         self.active_goal = move_goal
-        self.last_destination = target
 
     def cancel_goal(self):
         if self.active_goal:
@@ -144,28 +142,28 @@ class clientbot(bwirobot):
         client = roslibpy.Ros(host="0.0.0.0", port=9090)
         client.run()
         super().__init__(client)
-        self.ch = None # client handle, when we need to join a conversation server
+        self.chat_client = None # client, when we need to join a conversation server
 
         # to send our position to the server
-        self.th = ClientThreadHandle(client)
+        self.thread = ClientThread(client)
 
     def prompted_for_conversation(self):
-        return self.th.last_response_from_server == "conversation started"
+        return self.thread.last_response_from_server == "conversation started"
 
     def join_conversation_server(self):
-        ch = ClientHandle()
-        ch.connect_to_server(port=PORT + 1000)
-        self.ch = ch
+        chat_client = Client()
+        chat_client.connect_to_server(port=PORT + 1000)
+        self.chat_client = chat_client
 
-        chat = ChatSession(ch.client_socket)
+        chat = ChatSession(chat_client.client_socket)
         chat.log_prompt("You are submissive robot and you are currently in a conversation with an alpha male robot. Write an appropriate response to them with your personality.")
         self.chat = chat
         return chat
         
     def leave_conversation_server(self):
         self.chat = None
-        self.ch.close_connection_to_server()
-        self.ch = None
+        self.chat_client.close_connection_to_server()
+        self.chat_client = None
 
 class serverbot(bwirobot):
     """
@@ -182,25 +180,26 @@ class serverbot(bwirobot):
         super().__init__(client)
 
         # start a conversation server
-        sh = ServerHandle()
-        sh.start_server(port=PORT + 1000)
-        self.sh = sh
+        chat_server = Server()
+        chat_server.start_server(port=PORT + 1000)
+        self.chat_server = chat_server
 
         # start a ROS location server
-        self.th = ServerThreadHandle(client)
+        self.thread = ServerThread(client)
 
     def prompts_conversation(self):
-        return self.th.last_message_sent == "conversation started"
+        return self.thread.last_message_sent == "conversation started"
     
     def start_conversation(self):
         print('starting the conversation' + "\n" * 50)
 
         # wait for client to connect
-        client_socket, client_addr = self.sh.server_socket.accept()
+        client_socket, client_addr = self.chat_server.server_socket.accept()
         print(f"client connected at {client_addr}.")
 
         chat = ChatSession(client_socket)
         self.chat = chat
+        
         response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a robot. Introduce yourself and ask them about their plans. Write only what you would say.")
         self.speak(response)
 

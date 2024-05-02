@@ -1,21 +1,24 @@
 import random
 from npc_lib import bwibots
 
-nova = bwibots.clientbot()
-
 """
 todo need to test:
 -- threads.py: connect to server in init
--- chatsession class
--- clienthandle, serverhandle class
--- if i need to connect to server in a while true loop and close sockets after sending a message
 
 todo cooldown after talking to robot
+todo integrate robot / person convo
+todo check robot runs w/o client or server (use bwibot class)
+todo nltk
+
 todo figure out if i need to kill sockets / threads when shutting down
+
+todo if time, multiparty and mixed conversations
 """
 
-while True:
-    try:
+nova = bwibots.clientbot()
+
+try:
+    while True:
         if not nova.completed_last_action:
             nova.completed_last_action = True
             nova.move_to(nova.last_destination)
@@ -40,7 +43,7 @@ while True:
                 
                 nova.leave_conversation_server()
 
-    except:
-        nova.cancel_goal()
-        # nova.vision.close()
-        break
+except Exception as e:
+    print(e)
+    nova.cancel_goal()
+    # nova.vision.close()

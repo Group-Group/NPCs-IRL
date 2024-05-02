@@ -11,9 +11,9 @@ PORT = 23484
 
 PROXIMITY_METERS = 2
 
-class ClientThreadHandle:
+class ClientThread:
     """
-    ThreadHandle handles the client thread and ROS. 
+    `ClientThreadHandle` handles the client thread and ROS. 
     ### Attributes
     * `last_response_from_server`
     """
@@ -21,11 +21,12 @@ class ClientThreadHandle:
         self.rh = ROSLocationHandle(client) # ros handle
         self.last_response_from_server = None
 
-        ch = ClientHandle()
-        ch.connect_to_server()
+        # connect to ROS location server
+        client = Client()
+        client.connect_to_server()
         print("Connected to ROS location server.")
-        self.ch = ch
-        self.client_socket = ch.client_socket
+        self.client = client
+        self.client_socket = client.client_socket
 
         thread = threading.Thread(target=self.send_pos_to_server)
         thread.start()
@@ -43,22 +44,23 @@ class ClientThreadHandle:
 
             time.sleep(0.5)
 
-class ServerThreadHandle:
+class ServerThread:
     """
-    SeverThreadHandle handles the server thread and ROS. 
+    `SeverThreadHandle` handles the server thread and ROS. 
     ### Attributes
     * `last_message_sent`
     * `last_location_seen`
     """
     def __init__(self, client):
         self.rh = ROSLocationHandle(client) # ros handle
-        self.last_location_seen = None # location of other robot
+        self.last_location_seen = None # location of other robot (x, y, z, w)
         self.last_message_sent = None
 
-        sh = ServerHandle()
-        sh.start_server()
-        self.sh = sh
-        self.server_socket = sh.server_socket
+        # start the ROS location server
+        server = Server()
+        server.start_server()
+        self.server = server
+        self.server_socket = server.server_socket
 
         thread = threading.Thread(target=self.run_server)
         thread.start()
@@ -75,22 +77,22 @@ class ServerThreadHandle:
             data = client_socket.recv(1024)
             x, y = json.loads(data.decode())
             print(f"Received coordinates from client: ({x}, {y})")
-            self.last_location_seen = (x, y)
+            self.last_location_seen = (x, y, 0.217, 1.0)
 
             # send a message back to client when in range
             if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
                 print("IN RANGE")
                 response_message = "conversation started"
                 self.last_message_sent = response_message
-                client_socket.sendall(response_message.encode())
             else:
                 response_message = ""
-                client_socket.sendall(response_message.encode())
+            client_socket.sendall(response_message.encode())
+
         
         # print(f"Connection with {client_addr} closed")
         # client_socket.close()
 
-class ClientHandle:
+class Client:
     """
     `ClientHandle` handles starting and stopping the client socket.
     ### Methods
@@ -123,7 +125,7 @@ class ClientHandle:
     def close_connection_to_server(self):
         self.client_socket.close()
 
-class ServerHandle:
+class Server:
     """
     `ServerHandle` handles starting and stopping the server socket
     ### Methods
