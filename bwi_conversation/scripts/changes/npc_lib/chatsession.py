@@ -12,7 +12,7 @@ class ChatSession:
     ### Attributes
     * `conversation_socket`: the socket used to send and receive messages
     """
-    def __init__(self, conversation_socket, has_person=False):
+    def __init__(self, conversation_socket=None, has_person=False):
         self.max_messages = 4 # random.randint(1, 909124)
         self.conversation_socket = conversation_socket
         self.history = [] # must be a list of properly formatted messages
@@ -36,7 +36,7 @@ class ChatSession:
         self.history.append(response)
         return response["content"]
 
-    def send_message(self, message):
+    def send_message(self, message, force_stop):
         """ log a formatted message in chat history and send it to the server / client """
         
         print("\n" * 50)
@@ -46,9 +46,11 @@ class ChatSession:
             'content': message.content,
         }
         
-        self.is_ongoing = len(self.history) / 2 < self.max_messages
+        self.is_ongoing = len(self.history) / 2 < self.max_messages or force_stop
         self.history.append(formatted)
-        formatted = json.dumps(formatted)
-        self.conversation_socket.sendall(formatted.encode())
+
+        if self.conversation_socket:
+            formatted = json.dumps(formatted)
+            self.conversation_socket.sendall(formatted.encode())
 
         print("Sent message ", formatted)

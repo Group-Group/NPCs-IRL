@@ -6,7 +6,7 @@ import roslibpy
 from pathlib import Path
 
 from .threads import PORT, Client, Server, ClientThread, ServerThread
-# from .bwi_vision import bwivision
+from .bwi_vision import bwivision
 from .chatsession import ChatSession
 
 
@@ -40,7 +40,7 @@ class bwirobot:
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
         self.chat = None # []
-        # self.vision = bwivision()
+        self.vision = bwivision()
 
     def ask_chat(self, prompt):
         self.chat.log_prompt(prompt)
@@ -88,10 +88,27 @@ class bwirobot:
         response.stream_to_file(speech_file_path)
         playsound(speech_file_path)
         
+    def start_person_conversation(self):
+        print('starting person conversation' + "\n" * 50)
+
+        chat = ChatSession(has_person=True)
+        self.chat = chat
+        
+        response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a person. Introduce yourself and ask them about their plans. Write only what you would say.")
+        self.speak(response)
+
+        chat.send_message(raw)
+        return chat
+    
     def respond(self):
-        """ need logic for people convo """
         print("waiting for a response")
-        other_response = self.chat.wait_for_message()
+
+        if self.chat.has_person:
+            other_response = self.recognize_speech()
+            force_stop = self.vision.detects_person()
+        else:
+            other_response = self.chat.wait_for_message()
+            force_stop = False
 
         print(f"received response: {other_response}")
         response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
@@ -100,7 +117,7 @@ class bwirobot:
         self.speak(response)
 
         print("sending message")
-        self.chat.send_message(raw)
+        self.chat.send_message(raw, force_stop=force_stop)
         return self.chat
 
     def move_to(self, target):
@@ -190,7 +207,7 @@ class serverbot(bwirobot):
     def prompts_conversation(self):
         return self.thread.last_message_sent == "conversation started"
     
-    def start_conversation(self):
+    def start_robot_conversation(self):
         print('starting the conversation' + "\n" * 50)
 
         # wait for client to connect

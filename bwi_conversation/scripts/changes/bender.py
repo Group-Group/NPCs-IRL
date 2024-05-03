@@ -1,6 +1,17 @@
 import random
 from npc_lib import bwibots
 
+"""
+face detection vs robot detection
+-- prioritize faces
+
+chat collisions
+-- one robot talking to a person
+
+cooldowns
+
+"""
+
 bender = bwibots.serverbot()
 
 try:
@@ -18,13 +29,18 @@ try:
 
         # this is a blocking loop
         while bender.active_goal is not None and not bender.active_goal.is_finished:
-            # bender.vision.check_for_person()
-            flagged_for_conversation = bender.prompts_conversation() # or bender.vision.detects_person()
+            bender.vision.check_for_person()
+            person_detected = bender.vision.detects_person()
+            flagged_for_conversation = bender.prompts_conversation() or person_detected
 
             if (flagged_for_conversation):
                 bender.cancel_goal()
-                bender.move_to(bender.thread.last_location_seen)
-                chat = bender.start_conversation()
+
+                if person_detected:
+                    chat = bender.start_person_conversation()
+                else:
+                    bender.move_to(bender.thread.last_location_seen)
+                    chat = bender.start_robot_conversation()
                 
                 while chat.is_ongoing:
                     bender.respond()

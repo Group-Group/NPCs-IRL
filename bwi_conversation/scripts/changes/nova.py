@@ -32,7 +32,7 @@ try:
 
         while nova.active_goal is not None and not nova.active_goal.is_finished:
             # nova.vision.check_for_person()
-            flagged_for_conversation = nova.prompted_for_conversation() # nova.vision.detects_person()
+            flagged_for_conversation = nova.prompted_for_conversation() # or nova.vision.detects_person()
 
             if (flagged_for_conversation):
                 nova.cancel_goal()
