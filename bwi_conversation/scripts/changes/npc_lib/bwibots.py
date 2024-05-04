@@ -34,13 +34,15 @@ class bwirobot:
     * initiate conversations with other robots
     * send its position to a server
     """
-    def __init__(self, client):
+    def __init__(self, client, enable_vision=True):
         self.action_client = roslibpy.actionlib.ActionClient(client, "/move_base", "move_base_msgs/MoveBaseAction")
         self.active_goal = None # the current move goal
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
         self.chat = None # []
-        self.vision = bwivision()
+        self.enable_vision = enable_vision
+        if enable_vision:
+            self.vision = bwivision()
 
     def ask_chat(self, prompt):
         self.chat.log_prompt(prompt)
@@ -61,7 +63,7 @@ class bwirobot:
 
         with sr.Microphone() as source:
             print("Say something...")
-            audio = recognizer.listen(source)
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
         try:
             speech = recognizer.recognize_google(audio)
             print("You said: " + speech)
@@ -111,24 +113,27 @@ class bwirobot:
                 if other_response:
                     break
 
-            force_stop = not self.vision.detects_person() or attempts >= 3
+            force_stop = attempts >= 2
         else:
-            print("from robot")
             other_response = self.chat.wait_for_message()
-            force_stop = "Goodbye" in other_response
+            force_stop = "Goodbye" in other_response or (self.chat.history and len(self.chat.history) > 5)
 
         print(f"received response: {other_response}")
         if force_stop: # todo robot goodbye
-            response, raw = self.ask_chat("Say Goodbye!")
+            if "Goodbye" in other_response:
+                response, raw = self.ask_chat("Say Goodbye!")
+            else:
+                response, raw = self.ask_chat("The conversation is coming to an end. Give a cordial goodbye.")
+            self.thread.timeout = 60
             # response = "Goodbye!"
         else:
             response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
 
-        print("speaking")
         self.speak(response)
 
-        print("sending message")
-        self.chat.send_message(raw, force_stop=force_stop)
+
+        if "Goodbye" not in other_response: # TODO CHECK THE VALIDITY OF THIS LINE
+            self.chat.send_message(raw, force_stop=force_stop)
         return self.chat
 
     def move_to(self, target):
@@ -155,7 +160,6 @@ class bwirobot:
 
     def cancel_goal(self):
         if self.active_goal:
-            print("cancelling goal")
             self.active_goal.cancel()
             self.active_goal = None
             self.completed_last_action = False
@@ -220,8 +224,6 @@ class serverbot(bwirobot):
         return self.thread.last_message_sent == "conversation started"
     
     def start_robot_conversation(self):
-        print('starting the conversation' + "\n" * 50)
-
         # wait for client to connect
         client_socket, client_addr = self.chat_server.server_socket.accept()
         print(f"client connected at {client_addr}.")
@@ -229,9 +231,8 @@ class serverbot(bwirobot):
         chat = ChatSession(client_socket)
         self.chat = chat
         
-        response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a robot. Introduce yourself and ask them about their plans. Write only what you would say.")
+        response, raw = self.ask_chat("Talk about whatever you want. Be brief in your response.")
         self.speak(response)
 
         chat.send_message(raw, force_stop=False)
         return chat
-        

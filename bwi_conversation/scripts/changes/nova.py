@@ -15,7 +15,7 @@ todo figure out if i need to kill sockets / threads when shutting down
 todo if time, multiparty and mixed conversations
 """
 
-nova = bwibots.clientbot()
+nova = bwibots.clientbot(enable_vision=True)
 
 try:
     while True:
@@ -31,21 +31,27 @@ try:
             nova.move_to(next_destination)
 
         while nova.active_goal is not None and not nova.active_goal.is_finished:
-            nova.vision.check_for_person()
-            person_detected = nova.vision.detects_person()
-            if person_detected:
-                nova.thread.send_far = True
-            flagged_for_conversation = nova.prompted_for_conversation() or nova.vision.detects_person()
+            person_detected = False
+            if nova.enable_vision:
+                nova.vision.check_for_person()
+                person_detected = nova.vision.detects_person()
+                if person_detected:
+                    nova.thread.send_far = True
+            flagged_for_conversation = nova.prompted_for_conversation() or person_detected
 
             if (flagged_for_conversation):
                 nova.cancel_goal()
-                chat = nova.join_conversation_server()
-                
-                while chat.is_ongoing:
-                    nova.respond()
-                
-                print("conversation over")
-                nova.leave_conversation_server()
+                if person_detected:
+                    nova.thread.send_far = True
+                    chat = nova.start_person_conversation()
+
+                else: 
+                    chat = nova.join_conversation_server()
+                    while chat.is_ongoing:
+                        nova.respond()
+                    
+                    print("conversation over")
+                    nova.leave_conversation_server()
                 nova.thread.send_far = False
 
 except Exception as e:

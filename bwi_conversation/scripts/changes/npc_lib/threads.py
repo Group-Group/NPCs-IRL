@@ -5,6 +5,7 @@ import socket
 import json
 import math
 import time
+import random
 
 HOST = '10.0.0.140'
 PORT = 23485
@@ -28,6 +29,7 @@ class ClientThread:
         self.client = client
         self.client_socket = client.client_socket
         self.send_far = False
+        self.timeout = 0 # useless variable right now just using it for other thread
 
         thread = threading.Thread(target=self.send_pos_to_server)
         thread.start()
@@ -42,9 +44,7 @@ class ClientThread:
             self.client_socket.sendall(message.encode())
 
             # receive the servers response
-            print("Location response waiting")
             encoded_response = self.client_socket.recv(1024)
-            print("Got Locations")
             response = encoded_response.decode()
             self.last_response_from_server = response
             print(f"Response from server: {response}")
@@ -80,20 +80,30 @@ class ServerThread:
     
     def handle_client(self, client_socket, client_addr):
         while True:
-            print(f"Connection from {client_addr}")
-            data = client_socket.recv(1024)
-            x, y = json.loads(data.decode())
-            print(f"Received coordinates from client: ({x}, {y})")
-            self.last_location_seen = (x, y, 0.217, 1.0)
+            if self.timeout == 0:
+                print(f"Connection from {client_addr}")
+                data = client_socket.recv(1024)
+                x, y = json.loads(data.decode())
+                print(f"Received coordinates from client: ({x}, {y})")
+                self.last_location_seen = (x, y, 0.217, 1.0)
 
-            # send a message back to client when in range
-            if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
-                print("IN RANGE")
-                response_message = "conversation started"
-                self.last_message_sent = response_message
+                # send a message back to client when in range
+                if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
+                    print("IN RANGE")
+                    response_message = "conversation started"
+                    self.last_message_sent = response_message
+                else:
+                    response_message = "not in range"
+                client_socket.sendall(response_message.encode())
+                print("sent to client: " + response_message)
             else:
-                response_message = ""
-            client_socket.sendall(response_message.encode())
+                self.last_message_sent = None
+                if (self.timeout == float('inf')):
+                    while self.timeout == float('inf'):
+                        continue
+                # else:
+                time.sleep(self.timeout)
+                self.timeout = 0
 
         
         # print(f"Connection with {client_addr} closed")
@@ -160,8 +170,8 @@ class Server:
 class ROSLocationHandle:
     def __init__(self, client):
         # client is a roslibpy.Ros object
-        self.x = -1000
-        self.y = -1000
+        self.x = random.randint(-999, 999) * 100
+        self.y = random.randint(-999, 999) * 100
 
         # subscribe to the robot's position
         self.tf_client = roslibpy.tf.TFClient(client, "/2ndFloorWhole_map")
