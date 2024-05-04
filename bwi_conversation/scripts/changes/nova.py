@@ -31,8 +31,11 @@ try:
             nova.move_to(next_destination)
 
         while nova.active_goal is not None and not nova.active_goal.is_finished:
-            # nova.vision.check_for_person()
-            flagged_for_conversation = nova.prompted_for_conversation() # or nova.vision.detects_person()
+            nova.vision.check_for_person()
+            person_detected = nova.vision.detects_person()
+            if person_detected:
+                nova.thread.send_far = True
+            flagged_for_conversation = nova.prompted_for_conversation() or nova.vision.detects_person()
 
             if (flagged_for_conversation):
                 nova.cancel_goal()
@@ -41,7 +44,9 @@ try:
                 while chat.is_ongoing:
                     nova.respond()
                 
+                print("conversation over")
                 nova.leave_conversation_server()
+                nova.thread.send_far = False
 
 except Exception as e:
     print(e)

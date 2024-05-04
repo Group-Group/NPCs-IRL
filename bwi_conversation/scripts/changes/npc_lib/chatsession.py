@@ -46,7 +46,7 @@ class ChatSession:
             'content': message.content,
         }
         
-        self.is_ongoing = len(self.history) / 2 < self.max_messages or force_stop
+        self.is_ongoing = len(self.history) / 2 < self.max_messages and not force_stop
         self.history.append(formatted)
 
         if self.conversation_socket:

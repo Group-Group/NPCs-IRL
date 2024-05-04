@@ -7,9 +7,9 @@ import math
 import time
 
 HOST = '10.0.0.140'
-PORT = 23484
+PORT = 23485
 
-PROXIMITY_METERS = 2
+PROXIMITY_METERS = 2.5
 
 class ClientThread:
     """
@@ -27,6 +27,7 @@ class ClientThread:
         print("Connected to ROS location server.")
         self.client = client
         self.client_socket = client.client_socket
+        self.send_far = False
 
         thread = threading.Thread(target=self.send_pos_to_server)
         thread.start()
@@ -34,11 +35,17 @@ class ClientThread:
     def send_pos_to_server(self):
         while True:
             x, y = self.rh.get_location()
+            if self.send_far:
+                x, y = [-1000, -1000]
             message = json.dumps([x, y])
+            print(message + "sending")
             self.client_socket.sendall(message.encode())
 
             # receive the servers response
-            response = self.client_socket.recv(1024).decode()
+            print("Location response waiting")
+            encoded_response = self.client_socket.recv(1024)
+            print("Got Locations")
+            response = encoded_response.decode()
             self.last_response_from_server = response
             print(f"Response from server: {response}")
 
@@ -153,14 +160,15 @@ class Server:
 class ROSLocationHandle:
     def __init__(self, client):
         # client is a roslibpy.Ros object
-        self.x = 0
-        self.y = 0
+        self.x = -1000
+        self.y = -1000
 
         # subscribe to the robot's position
         self.tf_client = roslibpy.tf.TFClient(client, "/2ndFloorWhole_map")
         self.tf_client.subscribe("base_link", self.callback)
 
     def callback(self, msg):
+        # print(str(msg['translation']['x']) + " " + str(msg['translation']['y']))
         self.x = msg['translation']['x']
         self.y = msg['translation']['y']
 

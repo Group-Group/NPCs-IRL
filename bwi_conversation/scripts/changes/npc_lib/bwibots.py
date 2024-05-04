@@ -115,12 +115,12 @@ class bwirobot:
         else:
             print("from robot")
             other_response = self.chat.wait_for_message()
-            force_stop = False
+            force_stop = "Goodbye" in other_response
 
         print(f"received response: {other_response}")
-
         if force_stop: # todo robot goodbye
-            response, raw = self.ask_chat("The conversation is coming to an end. Give a cordial goodbye.")
+            response, raw = self.ask_chat("Say Goodbye!")
+            # response = "Goodbye!"
         else:
             response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
 
@@ -184,7 +184,7 @@ class clientbot(bwirobot):
         self.chat_client = chat_client
 
         chat = ChatSession(chat_client.client_socket)
-        chat.log_prompt("You are submissive robot and you are currently in a conversation with an alpha male robot. Write an appropriate response to them with your personality.")
+        chat.log_prompt("You are currently in a conversation with another BWI robot. Write an appropriate response to them with your personality.")
         self.chat = chat
         return chat
         
@@ -192,6 +192,7 @@ class clientbot(bwirobot):
         self.chat = None
         self.chat_client.close_connection_to_server()
         self.chat_client = None
+        self.thread.last_response_from_server = None
 
 class serverbot(bwirobot):
     """
