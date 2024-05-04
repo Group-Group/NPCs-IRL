@@ -44,10 +44,12 @@ try:
                 if person_detected:
                     nova.thread.send_far = True
                     chat = nova.start_person_conversation()
+                    while chat and chat.is_ongoing:
+                        nova.respond()
 
                 else: 
                     chat = nova.join_conversation_server()
-                    while chat.is_ongoing:
+                    while chat and chat.is_ongoing:
                         nova.respond()
                     
                     print("conversation over")

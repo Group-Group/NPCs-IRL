@@ -32,10 +32,10 @@ try:
             person_detected = False
             if bender.enable_vision:
                 bender.vision.check_for_person()
-                person_detected = False #bender.vision.detects_person()
+                person_detected = bender.vision.detects_person()
                 if person_detected:
                     bender.thread.timeout = float('inf')
-            flagged_for_conversation = bender.prompts_conversation() # or person_detected
+            flagged_for_conversation = bender.prompts_conversation() or person_detected
             
 
             if (flagged_for_conversation):
@@ -50,7 +50,7 @@ try:
                     # bender.move_to(bender.thread.last_location_seen)
                     chat = bender.start_robot_conversation()
                 
-                while chat.is_ongoing:
+                while chat and chat.is_ongoing:
                     bender.vision.check_for_person()
                     bender.respond()
                 # bender.thread.timeout = 60

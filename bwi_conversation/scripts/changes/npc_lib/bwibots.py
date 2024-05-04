@@ -94,11 +94,27 @@ class bwirobot:
 
         chat = ChatSession(has_person=True)
         self.chat = chat
-        
-        response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a person. Introduce yourself and ask them about their plans. Write only what you would say.")
-        self.speak(response)
 
-        chat.send_message(raw, force_stop=False)
+        attempts = 0
+        while attempts < 2:
+                attempts += 1
+                other_response = self.recognize_speech()
+                if other_response:
+                    break
+
+        force_stop = attempts >= 2
+        if not force_stop:
+            response, raw = self.ask_chat(f"You are a BWI robot and a person said {other_response} to you. Introduce yourself and write an appropriate response to them.")
+
+            # response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a person. Introduce yourself and ask them about their plans. Write only what you would say.")
+            self.speak(response)
+
+        
+            chat.send_message(raw, force_stop=False)
+
+        else:
+            chat = None
+
         return chat
     
     def respond(self):
