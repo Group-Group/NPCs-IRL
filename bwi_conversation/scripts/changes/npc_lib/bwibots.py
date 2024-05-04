@@ -99,10 +99,11 @@ class bwirobot:
         while attempts < 2:
                 attempts += 1
                 other_response = self.recognize_speech()
-                if other_response:
+                if "hello" or "hi" or "hey" in other_response:
                     break
 
         force_stop = attempts >= 2
+        
         if not force_stop:
             response, raw = self.ask_chat(f"You are a BWI robot and a person said {other_response} to you. Introduce yourself and write an appropriate response to them.")
 
