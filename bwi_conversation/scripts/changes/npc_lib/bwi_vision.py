@@ -9,6 +9,8 @@ device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
 device = pykinect.start_device(config=device_config)
 
 TIMEOUT_SECS = 7
+MINIMUM_WIDTH = 200
+MINIMUM_HEIGHT = 200
 
 class bwivision:
     """
@@ -31,7 +33,7 @@ class bwivision:
         cv2.destroyAllWindows()
 
     def detects_person(self):
-        self.person_detected = time.time() - self.last_detection_time < TIMEOUT_SECS
+        self.person_detected = (time.time() - self.last_detection_time) < TIMEOUT_SECS
         return self.person_detected
 
     def check_for_person(self):        
@@ -43,7 +45,7 @@ class bwivision:
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         bodies = self.cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
         for (x, y, w, h) in bodies:
-            if w > 200 and h > 300:
+            if w > MINIMUM_WIDTH and h > MINIMUM_HEIGHT:
                 cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
                 print("Saw a person. Going to continue the conversion!\n")
                 self.last_detection_time = time.time()

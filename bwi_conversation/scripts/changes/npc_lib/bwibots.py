@@ -61,7 +61,7 @@ class bwirobot:
 
         with sr.Microphone() as source:
             print("Say something...")
-            audio = recognizer.listen(source)
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
         try:
             speech = recognizer.recognize_google(audio)
             print("You said: " + speech)
@@ -111,24 +111,30 @@ class bwirobot:
                 if other_response:
                     break
 
-            force_stop = not self.vision.detects_person() or attempts >= 3
+            
+            print(str(self.vision.last_detection_time) + " " + str(self.vision.person_detected))
+            force_stop = attempts >= 2
         else:
             print("from robot")
             other_response = self.chat.wait_for_message()
-            force_stop = False
+            force_stop = len(self.chat.history) > 1
 
         print(f"received response: {other_response}")
 
-        if force_stop: # todo robot goodbye
+        if force_stop:
+            print("conversation forced to an end")
             response, raw = self.ask_chat("The conversation is coming to an end. Give a cordial goodbye.")
+            self.thread.timeout = 60
         else:
             response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
-
+        
         print("speaking")
         self.speak(response)
 
         print("sending message")
+        
         self.chat.send_message(raw, force_stop=force_stop)
+        
         return self.chat
 
     def move_to(self, target):
@@ -184,7 +190,7 @@ class clientbot(bwirobot):
         self.chat_client = chat_client
 
         chat = ChatSession(chat_client.client_socket)
-        chat.log_prompt("You are submissive robot and you are currently in a conversation with an alpha male robot. Write an appropriate response to them with your personality.")
+        chat.log_prompt("You are currently in a conversation with another BWI robot. Write an appropriate response to them with your personality.")
         self.chat = chat
         return chat
         
@@ -228,7 +234,7 @@ class serverbot(bwirobot):
         chat = ChatSession(client_socket)
         self.chat = chat
         
-        response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a robot. Introduce yourself and ask them about their plans. Write only what you would say.")
+        response, raw = self.ask_chat("Talk about whatever you want. Be brief in your response.")
         self.speak(response)
 
         chat.send_message(raw, force_stop=False)
