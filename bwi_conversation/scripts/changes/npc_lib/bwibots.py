@@ -63,11 +63,15 @@ class bwirobot:
             print("Say something...")
             audio = recognizer.listen(source)
         try:
-            print("You said: " + recognizer.recognize_google(audio))
+            speech = recognizer.recognize_google(audio)
+            print("You said: " + speech)
+            return speech
         except sr.UnknownValueError:
             print("Sorry, I could not understand what you said.")
+            return None
         except sr.RequestError as e:
             print("Could not request results from Google Speech Recognition service; {0}".format(e))
+            return None
 
 
     @staticmethod
@@ -101,7 +105,7 @@ class bwirobot:
         if self.chat.has_person:
             print("from person")
             attempts = 0
-            while attempts < 3:
+            while attempts < 2:
                 attempts += 1
                 other_response = self.recognize_speech()
                 if other_response:

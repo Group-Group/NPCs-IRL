@@ -18,9 +18,10 @@ class bwivision:
     * check_for_person: checks if there is a person in the current frame
     """
     def __init__(self):
-        self.last_detection_time = float('inf')
+        self.last_detection_time = -float('inf')
         self.person_detected = False
-        self.body_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
+        # self.cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
+        self.cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
         # create a new window
         cv2.namedWindow("Body detection", cv2.WINDOW_NORMAL)
@@ -40,7 +41,7 @@ class bwivision:
             return
     
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-        bodies = self.body_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        bodies = self.cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
         for (x, y, w, h) in bodies:
             if w > 200 and h > 300:
                 cv2.rectangle(color_image, (x, y), (x+w, y+h), (255, 0, 0), 2)
