@@ -1,7 +1,8 @@
 import cv2
 import pykinect_azure as pykinect
 import time
-from mtcnn import MTCNN # pip install mtcnn and pip install tensorflow-gpu
+from mtcnn import MTCNN # pip install mtcnn and pip install tensorflow-gpu?
+# import dlib
 
 pykinect.initialize_libraries(module_k4abt_path='/usr/lib/libk4abt.so', track_body=False)
 

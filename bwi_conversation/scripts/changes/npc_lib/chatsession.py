@@ -39,23 +39,25 @@ class ChatSession:
         """ log a formatted message in chat history and send it to the server / client """
         
         # format message as dictionary
-        formatted = {
-            'role': 'assistant',
-            'content': message.content,
-        }
-        
-        self.is_ongoing = len(self.history) / 2 < self.max_messages and not force_stop
-        self.history.append(formatted)
-
-        if force_stop and not self.has_person:
+        if message:
             formatted = {
                 'role': 'assistant',
-                'content': "Goodbye",
+                'content': message.content,
             }
-            formatted = json.dumps(formatted)
-            self.conversation_socket.sendall(formatted.encode())
-        elif self.conversation_socket and not self.has_person:
-            formatted = json.dumps(formatted)
-            self.conversation_socket.sendall(formatted.encode())
+            
+            self.is_ongoing = len(self.history) / 2 < self.max_messages and not force_stop
+            self.history.append(formatted)
 
+            if force_stop and not self.has_person:
+                formatted = {
+                    'role': 'assistant',
+                    'content': "Goodbye",
+                }
+                formatted = json.dumps(formatted)
+                self.conversation_socket.sendall(formatted.encode())
+            elif self.conversation_socket and not self.has_person:
+                formatted = json.dumps(formatted)
+                self.conversation_socket.sendall(formatted.encode())
+        else:
+            self.is_ongoing = False
         print("Sent message ", formatted)

@@ -12,7 +12,7 @@ cooldowns
 
 """
 
-bender = bwibots.serverbot(enable_vision=True)
+bender = bwibots.serverbot()
 
 try:
     while True:

@@ -82,7 +82,7 @@ class bwirobot:
         speech_file_path = Path(__file__).parent / "output.mp3"
         response = AIc.audio.speech.create(
             model="tts-1",
-            voice="nova",
+            voice="onyx",
             input=text
         )
 
@@ -97,11 +97,14 @@ class bwirobot:
 
         attempts = 0
         while attempts < 2:
-                attempts += 1
-                other_response = self.recognize_speech()
-                if "hello" or "hi" or "hey" in other_response:
-                    break
-
+            print(f"{attempts} attempt")
+            attempts += 1
+            other_response = self.recognize_speech()
+            if other_response is not None and "hello" or "hi" or "hey" in other_response:
+                print("breaking")
+                break
+        
+        print(other_response)
         force_stop = attempts >= 2
         
         if not force_stop:
@@ -137,7 +140,8 @@ class bwirobot:
 
         print(f"received response: {other_response}")
         if force_stop: # todo robot goodbye
-            if "Goodbye" in other_response:
+            print("stopping conversation")
+            if not other_response or "Goodbye" in other_response:
                 response, raw = self.ask_chat("Say Goodbye!")
             else:
                 response, raw = self.ask_chat("The conversation is coming to an end. Give a cordial goodbye.")
@@ -149,7 +153,7 @@ class bwirobot:
         self.speak(response)
 
 
-        if "Goodbye" not in other_response: # TODO CHECK THE VALIDITY OF THIS LINE
+        if other_response and "Goodbye" not in other_response: # TODO CHECK THE VALIDITY OF THIS LINE
             self.chat.send_message(raw, force_stop=force_stop)
         return self.chat
 
