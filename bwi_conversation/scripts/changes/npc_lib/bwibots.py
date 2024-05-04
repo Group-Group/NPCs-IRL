@@ -100,15 +100,25 @@ class bwirobot:
 
         if self.chat.has_person:
             print("from person")
-            other_response = self.recognize_speech()
-            force_stop = self.vision.detects_person()
+            attempts = 0
+            while attempts < 3:
+                attempts += 1
+                other_response = self.recognize_speech()
+                if other_response:
+                    break
+
+            force_stop = not self.vision.detects_person() or attempts >= 3
         else:
             print("from robot")
             other_response = self.chat.wait_for_message()
             force_stop = False
 
         print(f"received response: {other_response}")
-        response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
+
+        if force_stop: # todo robot goodbye
+            response, raw = self.ask_chat("The conversation is coming to an end. Give a cordial goodbye.")
+        else:
+            response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
 
         print("speaking")
         self.speak(response)
