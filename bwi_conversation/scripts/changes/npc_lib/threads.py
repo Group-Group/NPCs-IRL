@@ -6,7 +6,7 @@ import json
 import math
 import time
 
-HOST = '10.0.0.145'
+HOST = '10.0.0.140'
 PORT = 23484
 
 PROXIMITY_METERS = 2

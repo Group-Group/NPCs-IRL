@@ -13,7 +13,7 @@ from .chatsession import ChatSession
 """ some constants """
 
 AIc = OpenAI(
-    api_key="sk-proj-98CEKi821xDabqz4Lmi1T3BlbkFJWLZVBqJ15e7eqBxCwZCR"
+    api_key="sk-proj-BoQ0NfI5mra6q02ts07lT3BlbkFJ0E081wZQFK35rXTo1X0g"
 )
 landmarks = {
     "tv_screen": [-0.424, 6.777, 0.217, 1.0],
@@ -59,21 +59,16 @@ class bwirobot:
     def recognize_speech():
         recognizer = sr.Recognizer()
 
-        with sr.Microphone as source:
-            recognizer.adjust_for_ambient_noise(source)
-            print("Listening...")
+        with sr.Microphone() as source:
+            print("Say something...")
             audio = recognizer.listen(source)
-            print("Processing...")
-
         try:
-            text = recognizer.recognize_google(audio)
-            return text
+            print("You said: " + recognizer.recognize_google(audio))
         except sr.UnknownValueError:
-            print("Sorry, could not understand audio.")
-            return None
+            print("Sorry, I could not understand what you said.")
         except sr.RequestError as e:
-            print("Error occurred during request to Google Speech Recognition service:", str(e))
-            return None   
+            print("Could not request results from Google Speech Recognition service; {0}".format(e))
+
 
     @staticmethod
     def speak(text):
@@ -97,16 +92,18 @@ class bwirobot:
         response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a person. Introduce yourself and ask them about their plans. Write only what you would say.")
         self.speak(response)
 
-        chat.send_message(raw)
+        chat.send_message(raw, force_stop=False)
         return chat
     
     def respond(self):
         print("waiting for a response")
 
         if self.chat.has_person:
+            print("from person")
             other_response = self.recognize_speech()
             force_stop = self.vision.detects_person()
         else:
+            print("from robot")
             other_response = self.chat.wait_for_message()
             force_stop = False
 
@@ -220,6 +217,6 @@ class serverbot(bwirobot):
         response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a robot. Introduce yourself and ask them about their plans. Write only what you would say.")
         self.speak(response)
 
-        chat.send_message(raw)
+        chat.send_message(raw, force_stop=False)
         return chat
         
