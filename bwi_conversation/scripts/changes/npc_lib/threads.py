@@ -26,7 +26,7 @@ class ClientThread:
         client = Client()
         client.connect_to_server()
         print("Connected to ROS location server.")
-        self.client = client
+        
         self.client_socket = client.client_socket
         self.send_far = False
         self.timeout = 0 # useless variable right now just using it for other thread
@@ -75,39 +75,38 @@ class ServerThread:
     def run_server(self):
         while True:
             client_socket, client_addr = self.server_socket.accept()
-            client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_addr))
+            print(f"Connection from {client_addr}")
+
+            client_thread = threading.Thread(target=self.handle_client, args=(client_socket))
             client_thread.start()
     
-    def handle_client(self, client_socket, client_addr):
+    def handle_client(self, client_socket):
         while True:
-            if self.timeout == 0:
-                print(f"Connection from {client_addr}")
-                data = client_socket.recv(1024)
-                x, y = json.loads(data.decode())
-                print(f"Received coordinates from client: ({x}, {y})")
-                self.last_location_seen = (x, y, 0.217, 1.0)
+            self.do_timeout()
 
-                # send a message back to client when in range
-                if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
-                    print("IN RANGE")
-                    response_message = "conversation started"
-                    self.last_message_sent = response_message
-                else:
-                    response_message = "not in range"
-                client_socket.sendall(response_message.encode())
-                print("sent to client: " + response_message)
+            data = client_socket.recv(1024)
+            x, y = json.loads(data.decode())
+            print(f"Received coordinates from client: ({x}, {y})")
+            self.last_location_seen = (x, y, 0.217, 1.0)
+
+            # send a message back to client when in range
+            if math.dist(self.rh.get_location(), (x, y)) < PROXIMITY_METERS:
+                print("IN RANGE")
+                response_message = "conversation started"
+                self.last_message_sent = response_message
             else:
-                self.last_message_sent = None
-                if (self.timeout == float('inf')):
-                    while self.timeout == float('inf'):
-                        continue
-                # else:
-                time.sleep(self.timeout)
-                self.timeout = 0
+                response_message = "not in range"
+            client_socket.sendall(response_message.encode())
+            print("sent to client: " + response_message)
 
-        
-        # print(f"Connection with {client_addr} closed")
-        # client_socket.close()
+    def do_timeout(self):
+        if self.timeout > 0:
+            self.last_message_sent = None
+            while self.timeout == float('inf'):
+                continue
+            time.sleep(self.timeout)
+            self.timeout = 0
+
 
 class Client:
     """
