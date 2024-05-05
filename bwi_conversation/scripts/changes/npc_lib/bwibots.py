@@ -102,7 +102,8 @@ class bwirobot:
         self.chat = chat
 
         other_response = self.recognize_speech()
-        if other_response is None:
+        if other_response is None or not ("hello" in other_response or "hi" in other_response or "hey" in other_response):
+            chat.is_ongoing = False
             return chat
     
         #?? who starts this convo?
