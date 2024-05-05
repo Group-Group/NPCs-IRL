@@ -40,7 +40,8 @@ class bwirobot:
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
         self.chat = None # []
-        self.enable_vision = enable_vision
+        
+        self.vision = None
         if enable_vision:
             self.vision = bwivision()
 

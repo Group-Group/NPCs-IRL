@@ -1,14 +1,10 @@
 import cv2
 import pykinect_azure as pykinect
-import time
 from mtcnn import MTCNN # pip install mtcnn and pip install tensorflow-gpu?
 # import dlib
 
-pykinect.initialize_libraries(module_k4abt_path='/usr/lib/libk4abt.so', track_body=False)
-
-device_config = pykinect.default_configuration
-device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
-device = pykinect.start_device(config=device_config)
+import time
+import threading
 
 TIMEOUT_SECS = 7
 MINIMUM_WIDTH = 125
@@ -22,6 +18,13 @@ class bwivision:
     * check_for_person: checks if there is a person in the current frame
     """
     def __init__(self):
+
+        # starting the camera
+        pykinect.initialize_libraries(module_k4abt_path='/usr/lib/libk4abt.so', track_body=False)
+        device_config = pykinect.default_configuration
+        device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
+        device = pykinect.start_device(config=device_config)
+
         self.last_detection_time = -float('inf')
         self.person_detected = False
         # self.cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
@@ -30,8 +33,13 @@ class bwivision:
         # create a new window
         cv2.namedWindow("Body detection", cv2.WINDOW_NORMAL)
 
-        # new method
-        
+        thread = threading.Thread(target=self.start_vision)
+        thread.start()
+
+    def start_vision(self):
+        while True:
+            self.check_for_person()
+            self.detects_person()
 
     @staticmethod
     def close():
