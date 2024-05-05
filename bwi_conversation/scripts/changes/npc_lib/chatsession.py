@@ -58,9 +58,11 @@ class ChatSession:
 
     def save_to_file(self, path="conversation.txt"):
         with open(path, "w") as file:
-            for message in self.history:
+            for i, message in enumerate(self.history):
                 s = message.split("*")[1]
-                file.write(s + "\n")
-                print(s)
+                speaker = "bender" if i % 2 == 0 else "nova"
+
+                file.write(f"{speaker}: {s}\n")
+                print(f"{speaker}: {s}")
 
         print("Conversation written to ", path)
