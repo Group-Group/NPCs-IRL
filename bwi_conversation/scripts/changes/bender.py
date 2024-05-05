@@ -43,9 +43,12 @@ try:
                     # bender.move_to(bender.thread.last_location_seen)
                     chat = bender.start_robot_conversation()
                 
-                while chat.is_ongoing: # chat and chat.is_ongoing,, why add chat and
+                while chat.is_ongoing:
                     bender.respond()
-                # bender.thread.timeout = 60
+                
+                bender.chat.save_to_file()
+                
+                bender.thread.timeout = 60
                 bender.chat = None
 
 except Exception as e:

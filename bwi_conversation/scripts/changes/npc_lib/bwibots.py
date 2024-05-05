@@ -40,7 +40,7 @@ class bwirobot:
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
         self.chat = None # []
-        
+
         self.vision = None
         if enable_vision:
             self.vision = bwivision()
@@ -58,24 +58,29 @@ class bwirobot:
 
         return text, raw
 
-    @staticmethod
-    def recognize_speech():
+    def recognize_speech(self):
         recognizer = sr.Recognizer()
 
-        with sr.Microphone() as source:
-            print("Say something...")
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-        try:
-            speech = recognizer.recognize_google(audio)
-            print("You said: " + speech)
-            return speech
-        except sr.UnknownValueError:
-            print("Sorry, I could not understand what you said.")
-            return None
-        except sr.RequestError as e:
-            print("Could not request results from Google Speech Recognition service; {0}".format(e))
-            return None
+        # make 2 attempts to recognize speech
+        attempts = 0
 
+        while attempts < 2:
+            attempts += 1
+            with sr.Microphone() as source:
+                print("Say something...")
+                audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
+
+            try:
+                speech = recognizer.recognize_google(audio)
+                print("You said: " + speech)
+                return speech
+            except sr.UnknownValueError:
+                print("Sorry, I could not understand what you said.")
+            except sr.RequestError as e:
+                print("Could not request results from Google Speech Recognition service; {0}".format(e))
+
+        self.chat.is_ongoing = False
+        return None
 
     @staticmethod
     def speak(text):
@@ -96,66 +101,50 @@ class bwirobot:
         chat = ChatSession(has_person=True)
         self.chat = chat
 
-        attempts = 0
-        while attempts < 2:
-            print(f"{attempts} attempt")
-            attempts += 1
-            other_response = self.recognize_speech()
-            if other_response is not None and "hello" or "hi" or "hey" in other_response:
-                print("breaking")
-                break
+        other_response = self.recognize_speech()
+        if other_response is None:
+            return chat
+    
+        #?? who starts this convo?
+        # attempts = 0
+        # while attempts < 2:
+        #     print(f"{attempts} attempt")
+        #     attempts += 1
+        #     other_response = self.recognize_speech()
+        #     if other_response is not None and "hello" or "hi" or "hey" in other_response:
+        #         print("breaking")
+        #         break
         
-        print(other_response)
-        force_stop = attempts >= 2
-        
-        if not force_stop:
-            response, raw = self.ask_chat(f"You are a BWI robot and a person said {other_response} to you. Introduce yourself and write an appropriate response to them.")
-
-            # response, raw = self.ask_chat("You are a BWI robot that is circling the robotics lab and you ran into a person. Introduce yourself and ask them about their plans. Write only what you would say.")
-            self.speak(response)
-
-        
-            chat.send_message(raw, force_stop=False)
-
-        else:
-            chat = None
+        response, raw = self.ask_chat(f"You are a BWI robot and a person said {other_response} to you. Introduce yourself and write an appropriate response to them.")
+        self.speak(response)
+        chat.send_message(raw)
 
         return chat
     
     def respond(self):
         print("waiting for a response")
 
-        if self.chat.has_person:
-            print("from person")
-            attempts = 0
-            while attempts < 2:
-                attempts += 1
-                other_response = self.recognize_speech()
-                if other_response:
-                    break
+        if self.chat.has_person: # need to detect speech
+            other_response = self.recognize_speech()
+            self.chat.is_ongoing = other_response is not None
 
-            force_stop = attempts >= 2
-        else:
+            if self.vision: # make sure the person is engaged
+                self.chat.is_ongoing = self.chat.is_ongoing and self.vision.person_detected
+
+        else: # wait for a message over the socket
             other_response = self.chat.wait_for_message()
-            force_stop = "Goodbye" in other_response or (self.chat.history and len(self.chat.history) > 5)
-
+            self.chat.is_ongoing = "Goodbye" not in other_response and len(self.chat.history) <= 5 # (self.chat.history and len(self.chat.history) > 5)
         print(f"received response: {other_response}")
-        if force_stop: # todo robot goodbye
-            print("stopping conversation")
-            if not other_response or "Goodbye" in other_response:
-                response, raw = self.ask_chat("Say Goodbye!")
-            else:
-                response, raw = self.ask_chat("The conversation is coming to an end. Give a cordial goodbye.")
-            self.thread.timeout = 60
-            # response = "Goodbye!"
-        else:
+
+        # chat state might have changed from above, give an appropriate response
+        if self.chat.is_ongoing:
             response, raw = self.ask_chat(f"They said {other_response}. Write an appropriate response to them.")
-
+        else:
+            response, raw = self.ask_chat(f"Say goodbye! Be very brief but cordial. Say only a few words.")
+        
         self.speak(response)
+        self.chat.send_message(raw)
 
-
-        if other_response and "Goodbye" not in other_response: # TODO CHECK THE VALIDITY OF THIS LINE
-            self.chat.send_message(raw, force_stop=force_stop)
         return self.chat
 
     def move_to(self, target):
@@ -214,11 +203,13 @@ class clientbot(bwirobot):
         self.chat = chat
         return chat
         
-    def leave_conversation_server(self):
+    def leave_conversation(self):
         self.chat = None
-        self.chat_client.close_connection_to_server()
-        self.chat_client = None
         self.thread.last_response_from_server = None
+
+        if self.chat_client:
+            self.chat_client.close_connection_to_server()
+            self.chat_client = None
 
 class serverbot(bwirobot):
     """
@@ -256,5 +247,5 @@ class serverbot(bwirobot):
         response, raw = self.ask_chat("Talk about whatever you want. Be brief in your response.")
         self.speak(response)
 
-        chat.send_message(raw, force_stop=False)
+        chat.send_message(raw)
         return chat

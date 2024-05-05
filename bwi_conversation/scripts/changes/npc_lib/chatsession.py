@@ -13,7 +13,6 @@ class ChatSession:
     * `conversation_socket`: the socket used to send and receive messages
     """
     def __init__(self, conversation_socket=None, has_person=False):
-        self.max_messages = 5 # random.randint(1, 909124)
         self.conversation_socket = conversation_socket
         self.history = [] # must be a list of properly formatted messages
         self.is_ongoing = True
@@ -35,29 +34,24 @@ class ChatSession:
         self.history.append(response)
         return response["content"]
 
-    def send_message(self, message, force_stop):
+    def send_message(self, message):
         """ log a formatted message in chat history and send it to the server / client """
         
-        # format message as dictionary
-        if message:
-            formatted = {
-                'role': 'assistant',
-                'content': message.content,
-            }
-            
-            self.is_ongoing = len(self.history) / 2 < self.max_messages and not force_stop
-            self.history.append(formatted)
+        formatted = {
+            'role': 'assistant',
+            'content': message.content,
+        }
+        
+        self.history.append(formatted)
 
-            if force_stop and not self.has_person:
+        if self.conversation_socket is not None:
+            if not self.is_ongoing:
                 formatted = {
-                    'role': 'assistant',
-                    'content': "Goodbye",
+                    'role': 'user',
+                    'content': 'Goodbye',
                 }
-                formatted = json.dumps(formatted)
-                self.conversation_socket.sendall(formatted.encode())
-            elif self.conversation_socket and not self.has_person:
-                formatted = json.dumps(formatted)
-                self.conversation_socket.sendall(formatted.encode())
-        else:
-            self.is_ongoing = False
+
+            formatted = json.dumps(formatted)
+            self.conversation_socket.sendall(formatted.encode())
+
         print("Sent message ", formatted)
