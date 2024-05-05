@@ -11,9 +11,9 @@ device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
 device = pykinect.start_device(config=device_config)
 
 TIMEOUT_SECS = 7
-
 MINIMUM_WIDTH = 125
 MINIMUM_HEIGHT = 125
+
 class bwivision:
     """
     `bwivision` handles the person detection.

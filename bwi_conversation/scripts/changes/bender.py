@@ -1,17 +1,6 @@
 import random
 from npc_lib import bwibots
 
-"""
-face detection vs robot detection
--- prioritize faces
-
-chat collisions
--- one robot talking to a person
-
-cooldowns
-
-"""
-
 bender = bwibots.serverbot()
 
 try:
