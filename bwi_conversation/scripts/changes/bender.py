@@ -1,7 +1,7 @@
 import random
 from npc_lib import bwibots
 
-bender = bwibots.serverbot()
+bender = bwibots.serverbot(enable_vision=False)
 
 try:
     while True:
@@ -18,13 +18,6 @@ try:
 
         # this is a blocking loop
         while bender.active_goal is not None and not bender.active_goal.is_finished:
-            # person_detected = False
-            # if bender.enable_vision:
-            #     bender.vision.check_for_person()
-            #     person_detected = bender.vision.detects_person()
-            #     if person_detected:
-            #         bender.thread.timeout = float('inf')
-
             person_detected = bender.vision and bender.vision.person_detected
             if person_detected:
                 bender.thread.timeout = float('inf')

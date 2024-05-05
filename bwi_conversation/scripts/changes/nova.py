@@ -1,7 +1,7 @@
 import random
 from npc_lib import bwibots
 
-nova = bwibots.clientbot()
+nova = bwibots.clientbot(enable_vision=False)
 
 try:
     while True:

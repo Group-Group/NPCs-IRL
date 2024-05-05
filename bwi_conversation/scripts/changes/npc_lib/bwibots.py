@@ -34,12 +34,12 @@ class bwirobot:
     * initiate conversations with other robots
     * send its position to a server
     """
-    def __init__(self, client, enable_vision=True):
+    def __init__(self, client, enable_vision):
         self.action_client = roslibpy.actionlib.ActionClient(client, "/move_base", "move_base_msgs/MoveBaseAction")
         self.active_goal = None # the current move goal
         self.last_destination = None # string key for the landmarks dictionary
         self.completed_last_action = True
-        self.chat = None # []
+        self.chat = None
 
         self.vision = None
         if enable_vision:
@@ -105,16 +105,6 @@ class bwirobot:
         if other_response is None or not ("hello" in other_response or "hi" in other_response or "hey" in other_response):
             chat.is_ongoing = False
             return chat
-    
-        #?? who starts this convo?
-        # attempts = 0
-        # while attempts < 2:
-        #     print(f"{attempts} attempt")
-        #     attempts += 1
-        #     other_response = self.recognize_speech()
-        #     if other_response is not None and "hello" or "hi" or "hey" in other_response:
-        #         print("breaking")
-        #         break
         
         response, raw = self.ask_chat(f"You are a BWI robot and a person said *{other_response}* to you. Introduce yourself and write an appropriate response to them.")
         self.speak(response)
@@ -182,10 +172,10 @@ class clientbot(bwirobot):
     * send their position to a server
     * connect to a conversation server
     """
-    def __init__(self):
+    def __init__(self, enable_vision=True):
         client = roslibpy.Ros(host="0.0.0.0", port=9090)
         client.run()
-        super().__init__(client)
+        super().__init__(client, enable_vision)
         self.chat_client = None # client, when we need to join a conversation server
 
         # to send our position to the server
@@ -221,10 +211,10 @@ class serverbot(bwirobot):
     * initiate conversation with other robots
     
     """
-    def __init__(self):
+    def __init__(self, enable_vision=True):
         client = roslibpy.Ros(host="0.0.0.0", port=9090)
         client.run()
-        super().__init__(client)
+        super().__init__(client, enable_vision)
 
         # start a conversation server
         chat_server = Server()
@@ -245,7 +235,7 @@ class serverbot(bwirobot):
         chat = ChatSession(client_socket)
         self.chat = chat
         
-        response, raw = self.ask_chat("Talk about whatever you want. Be brief in your response.")
+        response, raw = self.ask_chat("Talk about whatever you want. ** Be brief in your response.")
         self.speak(response)
 
         chat.send_message(raw)

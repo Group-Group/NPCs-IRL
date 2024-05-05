@@ -77,10 +77,10 @@ class ServerThread:
             client_socket, client_addr = self.server_socket.accept()
             print(f"Connection from {client_addr}")
 
-            client_thread = threading.Thread(target=self.handle_client, args=(client_socket))
+            client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_addr))
             client_thread.start()
     
-    def handle_client(self, client_socket):
+    def handle_client(self, client_socket, client_addr):
         while True:
             self.do_timeout()
 

@@ -30,7 +30,7 @@ class bwivision:
         # self.cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fullbody.xml')
         # self.cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.detector = MTCNN()
-        # create a new window
+        
         cv2.namedWindow("Body detection", cv2.WINDOW_NORMAL)
 
         thread = threading.Thread(target=self.start_vision)
