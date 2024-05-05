@@ -23,7 +23,7 @@ class bwivision:
         pykinect.initialize_libraries(module_k4abt_path='/usr/lib/libk4abt.so', track_body=False)
         device_config = pykinect.default_configuration
         device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
-        device = pykinect.start_device(config=device_config)
+        self.device = pykinect.start_device(config=device_config)
 
         self.last_detection_time = -float('inf')
         self.person_detected = False
@@ -50,7 +50,7 @@ class bwivision:
         return self.person_detected
 
     def check_for_person(self):        
-        capture = device.update()
+        capture = self.device.update()
         ret_color, color_image = capture.get_color_image()
         if not ret_color:
             return

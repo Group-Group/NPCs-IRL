@@ -55,3 +55,12 @@ class ChatSession:
             self.conversation_socket.sendall(formatted.encode())
 
         print("Sent message ", formatted)
+
+    def save_to_file(self, path="conversation.txt"):
+        with open(path, "w") as file:
+            for message in self.history:
+                s = message.split("*")[1]
+                file.write(s + "\n")
+                print(s)
+
+        print("Conversation written to ", path)

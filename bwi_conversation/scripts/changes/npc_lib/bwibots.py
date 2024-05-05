@@ -115,7 +115,7 @@ class bwirobot:
         #         print("breaking")
         #         break
         
-        response, raw = self.ask_chat(f"You are a BWI robot and a person said {other_response} to you. Introduce yourself and write an appropriate response to them.")
+        response, raw = self.ask_chat(f"You are a BWI robot and a person said *{other_response}* to you. Introduce yourself and write an appropriate response to them.")
         self.speak(response)
         chat.send_message(raw)
 
